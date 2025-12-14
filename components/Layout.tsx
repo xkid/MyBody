@@ -76,6 +76,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeV
               label="Body" 
               onClick={onChangeView} 
             />
+             <NavItem 
+              view="deposits" 
+              current={currentView} 
+              icon={<Landmark size={24} />} 
+              label="Deposits" 
+              onClick={onChangeView} 
+            />
             <NavItem 
               view="stats" 
               current={currentView} 

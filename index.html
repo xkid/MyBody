@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>GetFit</title>
     
-    <!-- App Icons (Placeholder for dynamic generation) -->
-    <link id="favicon" rel="icon" type="image/png" href="/icon.svg" />
-    <link id="apple-icon" rel="apple-touch-icon" href="/icon.svg" />
+    <!-- App Icons (Base64 injected via script) -->
+    <link id="favicon" rel="icon" type="image/png" />
+    <link id="apple-icon" rel="apple-touch-icon" />
     
     <!-- iOS Web App Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -46,50 +46,78 @@
 }
 </script>
 <script>
-  // Generate iOS Apple Touch Icons and Favicon dynamically from SVG
+  // Generate Icon as Base64 (mimicking icon.png content)
   window.addEventListener('load', () => {
-    const svgUrl = '/icon.svg';
-    const appleSizes = [76, 120, 152, 167, 180];
+    // 1. Setup Canvas
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    // 2. Draw Background (Gradient - Pink/Red Health Theme)
+    const gradient = ctx.createLinearGradient(0, 0, size, size);
+    gradient.addColorStop(0, '#FF512F');
+    gradient.addColorStop(1, '#DD2476');
     
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-    img.onload = () => {
-      // 1. Create specific sizes for apple-touch-icon
-      appleSizes.forEach(size => {
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, size, size);
-        
-        const pngUrl = canvas.toDataURL('image/png');
-        
+    // Draw Square (iOS applies rounding automatically)
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+
+    // 3. Draw Heart Symbol (Centered)
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    // Heart shape logic
+    const topCurveHeight = size * 0.3;
+    const yOffset = size * 0.1; 
+    
+    ctx.moveTo(size / 2, yOffset + size / 5 + topCurveHeight);
+    ctx.bezierCurveTo(
+      size / 2, yOffset + size / 5, 
+      size / 10, yOffset + size / 5, 
+      size / 10, yOffset + size / 5 + topCurveHeight
+    );
+    ctx.bezierCurveTo(
+      size / 10, yOffset + size / 2 + topCurveHeight, 
+      size / 2, yOffset + size * 0.80, 
+      size / 2, yOffset + size * 0.80
+    );
+    ctx.bezierCurveTo(
+      size / 2, yOffset + size * 0.80, 
+      size * 0.9, yOffset + size / 2 + topCurveHeight, 
+      size * 0.9, yOffset + size / 5 + topCurveHeight
+    );
+    ctx.bezierCurveTo(
+      size * 0.9, yOffset + size / 5, 
+      size / 2, yOffset + size / 5, 
+      size / 2, yOffset + size / 5 + topCurveHeight
+    );
+    ctx.fill();
+
+    // 4. Convert to Data URL (Base64 PNG)
+    const base64Image = canvas.toDataURL('image/png');
+
+    // 5. Apply to Favicon
+    const favicon = document.getElementById('favicon');
+    if (favicon) {
+        favicon.href = base64Image;
+    }
+
+    // 6. Apply to Apple Touch Icon
+    const appleIcon = document.getElementById('apple-icon');
+    if (appleIcon) {
+        appleIcon.href = base64Image;
+    }
+    
+    // 7. Inject specific sizes for iOS
+    const sizes = [76, 120, 152, 180];
+    sizes.forEach(s => {
         const link = document.createElement('link');
         link.rel = 'apple-touch-icon';
-        link.sizes = `${size}x${size}`;
-        link.href = pngUrl;
+        link.sizes = `${s}x${s}`;
+        link.href = base64Image;
         document.head.appendChild(link);
-      });
-
-      // 2. Update the default apple-touch-icon
-      const defaultCanvas = document.createElement('canvas');
-      defaultCanvas.width = 180;
-      defaultCanvas.height = 180;
-      const ctx = defaultCanvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, 180, 180);
-      const defaultLink = document.getElementById('apple-icon');
-      if (defaultLink) defaultLink.href = defaultCanvas.toDataURL('image/png');
-
-      // 3. Update the main favicon to PNG (32x32)
-      const favCanvas = document.createElement('canvas');
-      favCanvas.width = 32;
-      favCanvas.height = 32;
-      const favCtx = favCanvas.getContext('2d');
-      favCtx.drawImage(img, 0, 0, 32, 32);
-      const favLink = document.getElementById('favicon');
-      if (favLink) favLink.href = favCanvas.toDataURL('image/png');
-    };
-    img.src = svgUrl;
+    });
   });
 </script>
 </head>
