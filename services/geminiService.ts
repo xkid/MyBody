@@ -1,7 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
-
 const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
 
 export interface AnalyzedFood {
   foodName: string;
@@ -19,6 +16,7 @@ export const analyzeFood = async (
   }
 
   const model = "gemini-2.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   
   // Construct the prompt
   let promptText = `
@@ -41,6 +39,7 @@ export const analyzeFood = async (
       throw new Error("Please provide an image or a description.");
   }
 
+  // Construct REST API Payload
   const parts: any[] = [{ text: promptText }];
   
   if (imageBase64) {
@@ -52,24 +51,35 @@ export const analyzeFood = async (
       });
   }
 
+  const payload = {
+    contents: [{ parts }],
+    tools: [{ googleSearch: {} }]
+  };
+
   try {
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: { parts },
-      config: {
-        // We use googleSearch to ground the data, especially if specific brands are mentioned or detected
-        tools: [{ googleSearch: {} }],
-      }
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
     });
 
-    const text = response.text || "{}";
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("API Request Failed:", errorData);
+        throw new Error(`Gemini API Error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
     
     // Attempt to clean markdown if present (e.g., ```json ... ```)
     const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
     try {
-      const data = JSON.parse(cleanedText) as AnalyzedFood;
-      return data;
+      const parsedData = JSON.parse(cleanedText) as AnalyzedFood;
+      return parsedData;
     } catch (parseError) {
       console.error("Failed to parse Gemini response:", text);
       return {
@@ -81,7 +91,7 @@ export const analyzeFood = async (
     }
 
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("Gemini Service Error:", error);
     throw new Error("Failed to analyze food. Please try again.");
   }
 };
