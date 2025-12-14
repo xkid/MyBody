@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { AppView } from '../types';
 import { 
@@ -5,7 +6,8 @@ import {
   Utensils, 
   Ruler, 
   BarChart2, 
-  Dumbbell
+  Dumbbell,
+  Landmark
 } from 'lucide-react';
 
 interface LayoutProps {

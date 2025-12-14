@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>GetFit</title>
     
-    <!-- App Icons -->
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <!-- App Icons (Placeholder for dynamic generation) -->
+    <link id="favicon" rel="icon" type="image/png" href="/icon.svg" />
     <link id="apple-icon" rel="apple-touch-icon" href="/icon.svg" />
     
     <!-- iOS Web App Meta -->
@@ -46,16 +46,16 @@
 }
 </script>
 <script>
-  // Generate iOS Apple Touch Icons of different sizes dynamically from SVG
+  // Generate iOS Apple Touch Icons and Favicon dynamically from SVG
   window.addEventListener('load', () => {
     const svgUrl = '/icon.svg';
-    const sizes = [76, 120, 152, 167, 180];
+    const appleSizes = [76, 120, 152, 167, 180];
     
     const img = new Image();
     img.crossOrigin = "Anonymous";
     img.onload = () => {
       // 1. Create specific sizes for apple-touch-icon
-      sizes.forEach(size => {
+      appleSizes.forEach(size => {
         const canvas = document.createElement('canvas');
         canvas.width = size;
         canvas.height = size;
@@ -71,7 +71,7 @@
         document.head.appendChild(link);
       });
 
-      // 2. Update the default/fallback apple-touch-icon (id="apple-icon")
+      // 2. Update the default apple-touch-icon
       const defaultCanvas = document.createElement('canvas');
       defaultCanvas.width = 180;
       defaultCanvas.height = 180;
@@ -79,6 +79,15 @@
       ctx.drawImage(img, 0, 0, 180, 180);
       const defaultLink = document.getElementById('apple-icon');
       if (defaultLink) defaultLink.href = defaultCanvas.toDataURL('image/png');
+
+      // 3. Update the main favicon to PNG (32x32)
+      const favCanvas = document.createElement('canvas');
+      favCanvas.width = 32;
+      favCanvas.height = 32;
+      const favCtx = favCanvas.getContext('2d');
+      favCtx.drawImage(img, 0, 0, 32, 32);
+      const favLink = document.getElementById('favicon');
+      if (favLink) favLink.href = favCanvas.toDataURL('image/png');
     };
     img.src = svgUrl;
   });
