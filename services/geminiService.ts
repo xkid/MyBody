@@ -95,3 +95,43 @@ export const analyzeFood = async (
     throw new Error("Failed to analyze food. Please try again.");
   }
 };
+
+export const estimateExercise = async (
+    activityName: string, 
+    durationMinutes: number
+): Promise<{ calories: number }> => {
+    if (!apiKey) throw new Error("API Key is missing.");
+
+    const model = "gemini-2.5-flash";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    
+    const promptText = `
+        Estimate the calories burned for a person performing the following activity:
+        Activity: "${activityName}"
+        Duration: ${durationMinutes} minutes.
+        Assume average intensity and an average adult body weight if specific data isn't known.
+        
+        Return ONLY a raw JSON object: { "calories": number }
+    `;
+
+    const payload = {
+        contents: [{ parts: [{ text: promptText }] }]
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleanedText);
+    } catch (error) {
+        console.error("Exercise Estimate Error:", error);
+        // Fallback calculation
+        return { calories: Math.round(durationMinutes * 5) };
+    }
+};

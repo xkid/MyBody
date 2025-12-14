@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Plus, Loader2, Search, X, Type } from 'lucide-react';
+import { Camera, Plus, Loader2, Search, X, Type, Check, ChevronLeft, Sparkles } from 'lucide-react';
 import { FoodEntry } from '../types';
 import { analyzeFood } from '../services/geminiService';
 
@@ -12,57 +12,77 @@ interface FoodModuleProps {
 export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onDeleteEntry }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  
+  // Form State
   const [description, setDescription] = useState('');
+  const [calories, setCalories] = useState<string>('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  
+  // UI State
+  const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const resetForm = () => {
+    setDescription('');
+    setCalories('');
+    setPreviewUrl(null);
+    setHasAnalyzed(false);
+    setIsAdding(false);
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
+        const result = reader.result as string;
+        setPreviewUrl(result);
+        // Auto-analyze immediately upon photo selection
+        handleAnalyze(result, '');
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleAnalyze = async () => {
-    if (!previewUrl && !description) return;
+  const handleAnalyze = async (imgData: string | null, textData: string) => {
+    if (!imgData && !textData) return;
     
     setAnalyzing(true);
     try {
-      let calories = 0;
-      let name = description || "Meal";
       let base64Data: string | null = null;
-
-      if (previewUrl) {
-        base64Data = previewUrl.split(',')[1];
+      if (imgData) {
+        base64Data = imgData.split(',')[1];
       }
 
-      // Analyze using AI (works with image+text OR just text)
-      const result = await analyzeFood(base64Data, description);
-      calories = result.calories;
-      name = result.foodName;
+      // Analyze using AI
+      const result = await analyzeFood(base64Data, textData);
+      
+      // Pre-populate fields for user editing
+      setDescription(result.foodName);
+      setCalories(result.calories.toString());
+      setHasAnalyzed(true);
 
-      onAddEntry({
-        id: Date.now().toString(),
-        date: new Date().toISOString(),
-        name,
-        calories,
-        imageUrl: previewUrl || undefined,
-        type: description
-      });
-
-      // Reset
-      setIsAdding(false);
-      setPreviewUrl(null);
-      setDescription('');
     } catch (error) {
-      alert("Failed to analyze food. Please try again.");
+      alert("Failed to analyze food. You can enter details manually.");
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const handleSaveEntry = () => {
+    if (!description || !calories) return;
+
+    onAddEntry({
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        name: description,
+        calories: parseInt(calories),
+        imageUrl: previewUrl || undefined,
+        type: "Logged"
+      });
+      
+      resetForm();
   };
 
   return (
@@ -99,7 +119,6 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                <div className="flex-1">
                  <h3 className="font-bold text-gray-900">{entry.name}</h3>
                  <p className="text-xs text-gray-500">{new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                 {entry.type && <p className="text-xs text-gray-400 italic">"{entry.type}"</p>}
                </div>
                <div className="flex flex-col items-end">
                   <span className="font-bold text-gray-900">{entry.calories} kcal</span>
@@ -112,89 +131,120 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
         )}
       </div>
 
-      {/* Add Modal/Overlay */}
+      {/* Full Screen Add Interface */}
       {isAdding && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-10">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Add Meal</h2>
-              <button onClick={() => setIsAdding(false)} className="bg-gray-100 p-2 rounded-full"><X size={20} /></button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Input Selection Visuals */}
-              <div className="flex space-x-4">
-                  {/* Camera Option */}
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`flex-1 border-2 border-dashed rounded-2xl h-32 flex flex-col items-center justify-center cursor-pointer transition-colors relative overflow-hidden ${previewUrl ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}`}
-                  >
-                    {previewUrl ? (
-                      <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                    ) : (
-                      <>
-                        <Camera className="text-gray-400 mb-2" size={24} />
-                        <p className="text-xs text-gray-500 font-medium">Take Photo</p>
-                      </>
-                    )}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      capture="environment"
-                      className="hidden" 
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                    />
-                  </div>
-
-                  {/* OR divider (visual only) */}
-                  <div className="flex items-center justify-center text-gray-300 font-bold text-xs">OR</div>
-
-                  {/* Text Option */}
-                   <div 
-                    className={`flex-1 border-2 border-transparent rounded-2xl h-32 flex flex-col items-center justify-center bg-gray-50 transition-colors ${description && !previewUrl ? 'bg-blue-50 ring-2 ring-blue-500' : ''}`}
-                  >
-                        <Type className={`mb-2 ${description ? 'text-blue-500' : 'text-gray-400'}`} size={24} />
-                        <p className={`text-xs font-medium ${description ? 'text-blue-600' : 'text-gray-500'}`}>
-                            Type Details below
-                        </p>
-                  </div>
-              </div>
-
-              {/* Text Input */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="e.g. 1 apple, Chicken Rice"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
-                  />
-                  <Search className="absolute left-3 top-3.5 text-gray-400" size={18} />
-                </div>
-                <p className="text-xs text-gray-400 mt-1">
-                    {previewUrl ? "Optional: Add details to help AI." : "Required: Describe your meal."}
-                </p>
-              </div>
-
-              <button
-                onClick={handleAnalyze}
-                disabled={analyzing || (!previewUrl && !description)}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-2 transition-colors"
-              >
-                {analyzing ? (
-                  <>
-                    <Loader2 className="animate-spin" size={20} />
-                    <span>Analyzing...</span>
-                  </>
-                ) : (
-                  <span>Calculate Calories</span>
-                )}
+        <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-in slide-in-from-bottom-5">
+           
+           {/* Header */}
+           <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+              <button onClick={resetForm} className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full">
+                <ChevronLeft size={24} />
               </button>
-            </div>
-          </div>
+              <h2 className="text-lg font-bold">Add Meal</h2>
+              <div className="w-10"></div> {/* Spacer */}
+           </div>
+
+           <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              
+              {/* Image Section */}
+              <div className="relative">
+                <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`w-full aspect-square sm:aspect-video rounded-3xl overflow-hidden flex flex-col items-center justify-center cursor-pointer transition-all ${previewUrl ? 'bg-black' : 'bg-gray-50 border-2 border-dashed border-gray-300 hover:bg-gray-50'}`}
+                >
+                    {previewUrl ? (
+                        <img src={previewUrl} alt="Meal" className="w-full h-full object-contain" />
+                    ) : (
+                        <div className="text-center p-6">
+                            <div className="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 shadow-sm">
+                                <Camera size={32} />
+                            </div>
+                            <p className="font-bold text-gray-900 text-lg">Take a Photo</p>
+                            <p className="text-sm text-gray-500 mt-1">AI will identify food & calories</p>
+                        </div>
+                    )}
+                    
+                    {analyzing && (
+                        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white backdrop-blur-sm">
+                            <Loader2 className="animate-spin mb-2" size={40} />
+                            <p className="font-bold">Analyzing...</p>
+                        </div>
+                    )}
+                </div>
+                <input 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment"
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                />
+              </div>
+
+              {/* Divider if no image */}
+              {!previewUrl && (
+                <div className="relative py-2">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-200"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-3 bg-white text-gray-500 font-medium">Or describe manually</span>
+                    </div>
+                </div>
+              )}
+
+              {/* Manual Input / Editing Section */}
+              <div className="space-y-4">
+                  <div>
+                      <label className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1 block">
+                          {previewUrl ? 'Food Name' : 'Food Description'}
+                      </label>
+                      <div className="relative">
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder={previewUrl ? "Identified Food Name" : "e.g. A grilled chicken sandwich and a cup of coffee"}
+                            className={`w-full text-lg font-medium placeholder:font-normal p-4 bg-gray-50 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none ${previewUrl ? 'h-16' : 'h-32'}`}
+                        />
+                        
+                        {/* AI Trigger for Text Only */}
+                        {!previewUrl && description.length > 2 && !hasAnalyzed && (
+                             <button 
+                                onClick={() => handleAnalyze(null, description)}
+                                disabled={analyzing}
+                                className="absolute right-3 bottom-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                             >
+                                {analyzing ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                                <span>Estimate Calories</span>
+                             </button>
+                        )}
+                      </div>
+                  </div>
+
+                  <div>
+                      <label className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1 block">Calories (kcal)</label>
+                      <input
+                          type="number"
+                          value={calories}
+                          onChange={(e) => setCalories(e.target.value)}
+                          placeholder="0"
+                          className="w-full text-xl font-semibold placeholder:font-normal p-4 bg-gray-50 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      />
+                  </div>
+              </div>
+           </div>
+
+           {/* Footer Action */}
+           <div className="p-6 border-t border-gray-100 bg-white safe-area-bottom">
+              <button
+                onClick={handleSaveEntry}
+                disabled={!description || !calories || analyzing}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-lg font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-[0.98]"
+              >
+                 <Check size={24} />
+                 <span>Save Entry</span>
+              </button>
+           </div>
         </div>
       )}
     </div>
