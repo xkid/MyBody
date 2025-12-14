@@ -241,7 +241,13 @@ const App: React.FC = () => {
           onAddMeasurement={(m) => setMeasurements([...measurements, m])}
         />;
       case 'stats':
-        return <StatsModule statsHistory={statsHistory} />;
+        return <StatsModule 
+            statsHistory={statsHistory} 
+            foods={foods}
+            exercises={exercises}
+            weights={weights}
+            measurements={measurements}
+        />;
       case 'settings':
         return <ProfileSettings 
             currentProfile={currentProfile}
