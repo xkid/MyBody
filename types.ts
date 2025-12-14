@@ -1,3 +1,4 @@
+
 export interface WeightEntry {
   id: string;
   date: string; // ISO string
@@ -48,8 +49,8 @@ export interface FixDepositEntry {
   slipNumber: string;
   principal: number;
   interestRate: number;
-  startDate: string; // YYYY-MM-DD
-  maturityDate: string; // YYYY-MM-DD
+  startDate: string; // ISO string
+  maturityDate: string; // ISO string
   dividend: number;
 }
 
@@ -62,7 +63,7 @@ export interface UserProfile {
   targetWeight?: number;
 }
 
-export type AppView = 'dashboard' | 'food' | 'exercise' | 'body' | 'stats' | 'settings' | 'deposits';
+export type AppView = 'dashboard' | 'food' | 'exercise' | 'body' | 'stats' | 'settings';
 
 export interface DailyStats {
   date: string;

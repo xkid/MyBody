@@ -5,8 +5,7 @@ import {
   Utensils, 
   Ruler, 
   BarChart2, 
-  Dumbbell,
-  Landmark
+  Dumbbell
 } from 'lucide-react';
 
 interface LayoutProps {
