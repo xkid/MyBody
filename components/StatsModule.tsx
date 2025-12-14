@@ -4,7 +4,7 @@ import {
   ComposedChart, Line, Legend, AreaChart, Area
 } from 'recharts';
 import { DailyStats, FoodEntry, ExerciseEntry, WeightEntry, MeasurementEntry } from '../types';
-import { Utensils, Dumbbell, Ruler, Scale, Calendar, List } from 'lucide-react';
+import { Utensils, Dumbbell, Ruler, Scale, Calendar, List, X } from 'lucide-react';
 
 interface StatsModuleProps {
   statsHistory: DailyStats[];
@@ -12,13 +12,18 @@ interface StatsModuleProps {
   exercises: ExerciseEntry[];
   weights: WeightEntry[];
   measurements: MeasurementEntry[];
+  onDeleteFood: (id: string) => void;
+  onDeleteExercise: (id: string) => void;
+  onDeleteWeight: (id: string) => void;
+  onDeleteMeasurement: (id: string) => void;
 }
 
 type Tab = 'overview' | 'food' | 'exercise' | 'weight' | 'body';
 type Period = 'daily' | 'monthly' | 'annual';
 
 export const StatsModule: React.FC<StatsModuleProps> = ({ 
-    statsHistory, foods, exercises, weights, measurements 
+    statsHistory, foods, exercises, weights, measurements,
+    onDeleteFood, onDeleteExercise, onDeleteWeight, onDeleteMeasurement
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [period, setPeriod] = useState<Period>('daily');
@@ -147,7 +152,12 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
                                 <p className="font-bold text-gray-900">{f.name}</p>
                                 <p className="text-xs text-gray-500">{new Date(f.date).toLocaleDateString()} {new Date(f.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
                             </div>
-                            <span className="font-bold text-green-600">{f.calories} kcal</span>
+                            <div className="flex items-center space-x-3">
+                                <span className="font-bold text-green-600">{f.calories} kcal</span>
+                                <button onClick={() => onDeleteFood(f.id)} className="text-gray-300 hover:text-red-500 p-1">
+                                    <X size={16} />
+                                </button>
+                            </div>
                         </div>
                     ))}
                     {filteredFoods.length === 0 && <div className="text-center text-gray-400 py-10">No records found for this period.</div>}
@@ -166,9 +176,14 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
                                 <p className="font-bold text-gray-900">{e.name}</p>
                                 <p className="text-xs text-gray-500">{new Date(e.date).toLocaleDateString()} • {e.durationMinutes} mins</p>
                             </div>
-                            <div className="text-right">
-                                <span className="block font-bold text-orange-600">{e.caloriesBurned} kcal</span>
-                                {e.steps && <span className="text-xs text-blue-500">{e.steps} steps</span>}
+                            <div className="flex items-center space-x-4">
+                                <div className="text-right">
+                                    <span className="block font-bold text-orange-600">{e.caloriesBurned} kcal</span>
+                                    {e.steps && <span className="text-xs text-blue-500">{e.steps} steps</span>}
+                                </div>
+                                <button onClick={() => onDeleteExercise(e.id)} className="text-gray-300 hover:text-red-500 p-1">
+                                    <X size={16} />
+                                </button>
                             </div>
                         </div>
                     ))}
@@ -202,7 +217,12 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
                     {filteredWeights.map(w => (
                         <div key={w.id} className="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center">
                             <span className="text-gray-500">{new Date(w.date).toLocaleDateString()}</span>
-                            <span className="font-bold text-gray-900 text-lg">{w.weight} kg</span>
+                            <div className="flex items-center space-x-3">
+                                <span className="font-bold text-gray-900 text-lg">{w.weight} kg</span>
+                                <button onClick={() => onDeleteWeight(w.id)} className="text-gray-300 hover:text-red-500 p-1">
+                                    <X size={16} />
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -214,8 +234,14 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
             <div className="space-y-4">
                  <h3 className="font-bold text-gray-900">Measurement Logs</h3>
                  {filteredMeasurements.map(m => (
-                    <div key={m.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-                        <div className="flex justify-between items-center mb-2 border-b border-gray-50 pb-2">
+                    <div key={m.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm relative group">
+                        <button 
+                            onClick={() => onDeleteMeasurement(m.id)}
+                            className="absolute top-4 right-4 text-gray-300 hover:text-red-500 p-2"
+                        >
+                            <X size={16} />
+                        </button>
+                        <div className="flex justify-between items-center mb-2 border-b border-gray-50 pb-2 pr-8">
                              <span className="font-bold text-gray-900">{new Date(m.date).toLocaleDateString()}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MeasurementEntry, WeightEntry, BodyMeasurements } from '../types';
-import { Ruler, Scale, ChevronLeft, History, Check } from 'lucide-react';
+import { Ruler, Scale, ChevronLeft, History, Check, X } from 'lucide-react';
 
 const SectionTitle = ({ children }: { children?: React.ReactNode }) => (
     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-8 mb-4 border-b border-gray-100 pb-2">{children}</h3>
@@ -72,6 +72,8 @@ interface BodyModuleProps {
   currentWeight: number;
   onAddMeasurement: (m: MeasurementEntry) => void;
   onAddWeight: (w: WeightEntry) => void;
+  onDeleteMeasurement: (id: string) => void;
+  onDeleteWeight: (id: string) => void;
 }
 
 export const BodyModule: React.FC<BodyModuleProps> = ({ 
@@ -79,7 +81,9 @@ export const BodyModule: React.FC<BodyModuleProps> = ({
   weights, 
   currentWeight,
   onAddMeasurement, 
-  onAddWeight 
+  onAddWeight,
+  onDeleteMeasurement,
+  onDeleteWeight
 }) => {
   const [activeTab, setActiveTab] = useState<'weight' | 'measure'>('weight');
   const [showAddWeight, setShowAddWeight] = useState(false);
@@ -187,7 +191,12 @@ export const BodyModule: React.FC<BodyModuleProps> = ({
                 {weights.slice().reverse().map(w => (
                     <div key={w.id} className="bg-white p-4 rounded-xl border border-gray-100 flex justify-between items-center">
                         <span className="text-gray-500">{new Date(w.date).toLocaleDateString()}</span>
-                        <span className="font-bold text-gray-900">{w.weight} kg</span>
+                        <div className="flex items-center space-x-3">
+                            <span className="font-bold text-gray-900">{w.weight} kg</span>
+                            <button onClick={() => onDeleteWeight(w.id)} className="text-gray-300 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition-colors">
+                                <X size={16} />
+                            </button>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -206,8 +215,15 @@ export const BodyModule: React.FC<BodyModuleProps> = ({
 
             <div className="space-y-4">
                 {measurements.slice().reverse().map(m => (
-                    <div key={m.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-                        <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                    <div key={m.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm relative group">
+                         <button 
+                            onClick={() => onDeleteMeasurement(m.id)}
+                            className="absolute top-4 right-4 text-gray-300 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors"
+                         >
+                            <X size={16} />
+                         </button>
+
+                        <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2 pr-8">
                             <span className="text-sm text-gray-500">{new Date(m.date).toLocaleDateString()}</span>
                             {m.syncedWeight && <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 font-medium">Synced: {m.syncedWeight}kg</span>}
                         </div>

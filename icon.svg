@@ -1,5 +1,32 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="115" fill="#2563EB"/>
-  <path d="M376 176C376 131.817 340.183 96 296 96C271.6 96 249.8 106.9 235 124.2C220.2 106.9 198.4 96 174 96C129.817 96 94 131.817 94 176C94 255 235 376 235 376C235 376 376 255 376 176Z" fill="#60A5FA" fill-opacity="0.3"/>
-  <path d="M128 256H192L224 160L288 352L320 256H384" stroke="white" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#34D399;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Background: iOS Squircle -->
+  <rect width="512" height="512" rx="115" fill="url(#grad1)"/>
+  
+  <!-- Stylized Leaf Background Accent -->
+  <path d="M256 80C150 80 96 180 96 256C96 360 180 432 256 432C332 432 416 360 416 256C416 180 362 80 256 80Z" fill="white" fill-opacity="0.2"/>
+  
+  <!-- Body Shape / Leaf Hybrid -->
+  <g transform="translate(0, 20)">
+    <!-- Head -->
+    <circle cx="256" cy="160" r="35" fill="white"/>
+    
+    <!-- Torso/Arms (Fit Shape) -->
+    <path d="M186 210C186 210 220 260 256 260C292 260 326 210 326 210C326 210 360 160 380 140" stroke="white" stroke-width="36" stroke-linecap="round"/>
+    <path d="M132 140C152 160 186 210 186 210" stroke="white" stroke-width="36" stroke-linecap="round"/>
+    
+    <!-- Body flowing into leaf stem -->
+    <path d="M256 260V380" stroke="white" stroke-width="36" stroke-linecap="round"/>
+    
+    <!-- Abstract Leaf Veins/Ribs suggesting fitness/abs -->
+    <path d="M256 300L220 280" stroke="white" stroke-width="20" stroke-linecap="round"/>
+    <path d="M256 300L292 280" stroke="white" stroke-width="20" stroke-linecap="round"/>
+    <path d="M256 340L230 325" stroke="white" stroke-width="20" stroke-linecap="round"/>
+    <path d="M256 340L282 325" stroke="white" stroke-width="20" stroke-linecap="round"/>
+  </g>
 </svg>

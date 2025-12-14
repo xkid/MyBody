@@ -21,6 +21,9 @@ const INITIAL_PROFILE: UserProfile = {
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Dashboard Date State
+  const [dashboardDate, setDashboardDate] = useState(new Date());
 
   // Profile State
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
@@ -138,25 +141,61 @@ const App: React.FC = () => {
 
   const handleSwitchProfile = (id: string) => {
       setCurrentProfileId(id);
+      setDashboardDate(new Date()); // Reset date on profile switch
   };
 
+  // Delete Handlers
+  const handleDeleteFood = (id: string) => setFoods(prev => prev.filter(f => f.id !== id));
+  const handleDeleteExercise = (id: string) => setExercises(prev => prev.filter(e => e.id !== id));
+  const handleDeleteWeight = (id: string) => setWeights(prev => prev.filter(w => w.id !== id));
+  const handleDeleteMeasurement = (id: string) => setMeasurements(prev => prev.filter(m => m.id !== id));
 
   // Derived Data for UI
   const currentProfile = useMemo(() => 
     profiles.find(p => p.id === currentProfileId) || INITIAL_PROFILE, 
   [profiles, currentProfileId]);
 
+  // ---- "Today" Data (For Food/Exercise Modules logging context) ----
   const today = new Date().toLocaleDateString();
-  
   const todayFoods = useMemo(() => 
     foods.filter(f => new Date(f.date).toLocaleDateString() === today),
   [foods, today]);
-
   const todayExercises = useMemo(() => 
     exercises.filter(e => new Date(e.date).toLocaleDateString() === today),
   [exercises, today]);
 
-  const latestWeight = weights.length > 0 ? weights[weights.length - 1].weight : 70; // Fallback 70kg
+  // ---- "Dashboard" Data (For Viewing History) ----
+  const dashboardDateStr = dashboardDate.toLocaleDateString();
+  const dashboardFoods = useMemo(() => 
+    foods.filter(f => new Date(f.date).toLocaleDateString() === dashboardDateStr),
+  [foods, dashboardDateStr]);
+  const dashboardExercises = useMemo(() => 
+    exercises.filter(e => new Date(e.date).toLocaleDateString() === dashboardDateStr),
+  [exercises, dashboardDateStr]);
+
+  // Helper: Find weight on or before a specific date for accurate BMR history
+  const getWeightForDate = (date: Date) => {
+      if (weights.length === 0) return 70; // default
+      // Sort weights ascending
+      const sorted = [...weights].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      let applicableWeight = sorted[0].weight;
+      // Find last entry before or on target
+      for (let w of sorted) {
+          if (new Date(w.date).getTime() <= endOfDay.getTime()) {
+              applicableWeight = w.weight;
+          } else {
+              break;
+          }
+      }
+      return applicableWeight;
+  };
+  
+  const dashboardWeight = getWeightForDate(dashboardDate);
+  const latestWeight = weights.length > 0 ? weights[weights.length - 1].weight : 70; // For Body Module
 
   // BMR Calculation
   const calculateBMR = (p: UserProfile, w: number) => {
@@ -166,18 +205,22 @@ const App: React.FC = () => {
     return bmr;
   };
 
+  // Stats for "Today" (Used for historical graph aggregation if needed, or default)
   const todayBMR = calculateBMR(currentProfile, latestWeight);
-  const totalIntake = todayFoods.reduce((acc, curr) => acc + curr.calories, 0);
-  const totalExerciseBurn = todayExercises.reduce((acc, curr) => acc + curr.caloriesBurned, 0);
-  const totalExerciseTime = todayExercises.reduce((acc, curr) => acc + curr.durationMinutes, 0);
   
-  const todayStats: DailyStats = {
-    date: new Date().toISOString(),
-    intake: totalIntake,
-    burned: totalExerciseBurn,
-    bmr: todayBMR,
-    net: totalIntake - (todayBMR + totalExerciseBurn),
-    exerciseMinutes: totalExerciseTime
+  // Stats for "Dashboard View"
+  const dashboardBMR = calculateBMR(currentProfile, dashboardWeight);
+  const dashboardIntake = dashboardFoods.reduce((acc, curr) => acc + curr.calories, 0);
+  const dashboardBurned = dashboardExercises.reduce((acc, curr) => acc + curr.caloriesBurned, 0);
+  const dashboardExerciseMins = dashboardExercises.reduce((acc, curr) => acc + curr.durationMinutes, 0);
+
+  const dashboardStats: DailyStats = {
+      date: dashboardDate.toISOString(),
+      intake: dashboardIntake,
+      burned: dashboardBurned,
+      bmr: dashboardBMR,
+      net: dashboardIntake - (dashboardBMR + dashboardBurned),
+      exerciseMinutes: dashboardExerciseMins
   };
 
   const statsHistory: DailyStats[] = useMemo(() => {
@@ -186,7 +229,7 @@ const App: React.FC = () => {
     // Initialize map with foods
     foods.forEach(f => {
       const d = new Date(f.date).toLocaleDateString();
-      if (!map.has(d)) map.set(d, { date: f.date, intake: 0, burned: 0, bmr: todayBMR, net: 0, exerciseMinutes: 0 });
+      if (!map.has(d)) map.set(d, { date: f.date, intake: 0, burned: 0, bmr: todayBMR, net: 0, exerciseMinutes: 0 }); // Note: BMR simplified here for history chart
       const entry = map.get(d)!;
       entry.intake += f.calories;
     });
@@ -206,7 +249,7 @@ const App: React.FC = () => {
     }));
   }, [foods, exercises, todayBMR]);
 
-  if (statsHistory.length === 0) statsHistory.push(todayStats);
+  if (statsHistory.length === 0) statsHistory.push(dashboardStats);
 
   // View Rendering
   const renderView = () => {
@@ -216,21 +259,23 @@ const App: React.FC = () => {
       case 'dashboard':
         return <Dashboard 
           profile={currentProfile} 
-          stats={todayStats} 
-          todayExerciseCount={todayExercises.length} 
+          stats={dashboardStats} 
+          todayExerciseCount={dashboardExercises.length} 
           onOpenSettings={() => setCurrentView('settings')}
+          currentDate={dashboardDate}
+          onDateChange={setDashboardDate}
         />;
       case 'food':
         return <FoodModule 
           entries={todayFoods} 
           onAddEntry={(f) => setFoods([...foods, f])}
-          onDeleteEntry={(id) => setFoods(foods.filter(f => f.id !== id))} 
+          onDeleteEntry={handleDeleteFood} 
         />;
       case 'exercise':
          return <ExerciseModule 
             entries={todayExercises} 
             onAddEntry={(e) => setExercises([...exercises, e])} 
-            onDeleteEntry={(id) => setExercises(exercises.filter(e => e.id !== id))}
+            onDeleteEntry={handleDeleteExercise}
          />;
       case 'body':
         return <BodyModule 
@@ -239,6 +284,8 @@ const App: React.FC = () => {
           currentWeight={latestWeight}
           onAddWeight={(w) => setWeights([...weights, w])}
           onAddMeasurement={(m) => setMeasurements([...measurements, m])}
+          onDeleteWeight={handleDeleteWeight}
+          onDeleteMeasurement={handleDeleteMeasurement}
         />;
       case 'stats':
         return <StatsModule 
@@ -247,6 +294,10 @@ const App: React.FC = () => {
             exercises={exercises}
             weights={weights}
             measurements={measurements}
+            onDeleteFood={handleDeleteFood}
+            onDeleteExercise={handleDeleteExercise}
+            onDeleteWeight={handleDeleteWeight}
+            onDeleteMeasurement={handleDeleteMeasurement}
         />;
       case 'settings':
         return <ProfileSettings 
@@ -259,9 +310,11 @@ const App: React.FC = () => {
       default:
         return <Dashboard 
           profile={currentProfile} 
-          stats={todayStats} 
-          todayExerciseCount={todayExercises.length} 
+          stats={dashboardStats} 
+          todayExerciseCount={dashboardExercises.length} 
           onOpenSettings={() => setCurrentView('settings')}
+          currentDate={dashboardDate}
+          onDateChange={setDashboardDate}
         />;
     }
   };

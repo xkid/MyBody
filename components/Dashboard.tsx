@@ -1,15 +1,24 @@
 import React from 'react';
 import { UserProfile, DailyStats } from '../types';
-import { Activity, Flame, Utensils, TrendingUp, Settings } from 'lucide-react';
+import { Activity, Flame, Utensils, TrendingUp, Settings, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
 interface DashboardProps {
   profile: UserProfile;
   stats: DailyStats;
   todayExerciseCount: number;
   onOpenSettings: () => void;
+  currentDate: Date;
+  onDateChange: (date: Date) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ profile, stats, todayExerciseCount, onOpenSettings }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ 
+  profile, 
+  stats, 
+  todayExerciseCount, 
+  onOpenSettings,
+  currentDate,
+  onDateChange
+}) => {
   const caloriesRemaining = stats.net; 
   // We will assume 'stats.bmr' is the base burn.
   const totalBurned = stats.bmr + stats.burned;
@@ -17,18 +26,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ profile, stats, todayExerc
   
   // Color coding
   const isSurplus = balance > 0;
+
+  // Date Helpers
+  const isToday = new Date().toDateString() === currentDate.toDateString();
+  
+  const handlePrevDay = () => {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() - 1);
+    onDateChange(d);
+  };
+
+  const handleNextDay = () => {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() + 1);
+    onDateChange(d);
+  };
   
   return (
     <div className="p-6 space-y-6 animate-in fade-in duration-500">
       <header className="flex justify-between items-center">
         <div>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Summary</h2>
-          <h1 className="text-3xl font-bold text-gray-900">Today</h1>
+          <div className="flex items-center space-x-1 mt-1 -ml-2">
+            <button 
+                onClick={handlePrevDay} 
+                className="p-1 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+            >
+                <ChevronLeft size={28} />
+            </button>
+            <h1 className="text-3xl font-bold text-gray-900 min-w-[120px] text-center">
+                {isToday ? "Today" : currentDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            </h1>
+            <button 
+                onClick={handleNextDay} 
+                disabled={isToday}
+                className={`p-1 rounded-full transition-colors ${isToday ? 'text-gray-200' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}
+            >
+                <ChevronRight size={28} />
+            </button>
+          </div>
         </div>
         <div className="flex items-center space-x-3">
-           <div className="text-right hidden sm:block">
-            <p className="text-sm text-gray-500">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-           </div>
            <button 
              onClick={onOpenSettings}
              className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors text-gray-600"
@@ -102,7 +140,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ profile, stats, todayExerc
                 </div>
                 <div>
                     <p className="font-semibold text-gray-900">Active Exercise</p>
-                    <p className="text-xs text-gray-500">{todayExerciseCount} sessions today</p>
+                    <p className="text-xs text-gray-500">{todayExerciseCount} sessions</p>
                 </div>
             </div>
             <div className="text-right">
