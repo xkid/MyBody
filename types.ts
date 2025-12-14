@@ -42,6 +42,17 @@ export interface ExerciseEntry {
   steps?: number; // Added steps tracking
 }
 
+export interface FixDepositEntry {
+  id: string;
+  bankName: string;
+  slipNumber: string;
+  principal: number;
+  interestRate: number;
+  startDate: string; // YYYY-MM-DD
+  maturityDate: string; // YYYY-MM-DD
+  dividend: number;
+}
+
 export interface UserProfile {
   id: string; // Unique ID for profile
   name: string;
@@ -51,7 +62,7 @@ export interface UserProfile {
   targetWeight?: number;
 }
 
-export type AppView = 'dashboard' | 'food' | 'exercise' | 'body' | 'stats' | 'settings';
+export type AppView = 'dashboard' | 'food' | 'exercise' | 'body' | 'stats' | 'settings' | 'deposits';
 
 export interface DailyStats {
   date: string;
