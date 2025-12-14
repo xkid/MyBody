@@ -1,0 +1,7 @@
+{
+  "name": "VitalSync Health",
+  "description": "A comprehensive iOS-style health tracker featuring weight, measurements, AI-powered calorie counting, and exercise tracking.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
