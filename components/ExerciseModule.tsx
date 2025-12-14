@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ExerciseEntry } from '../types';
-import { Plus, Timer, Flame, X, Footprints, Sparkles, History } from 'lucide-react';
+import { Plus, Timer, Flame, X, Footprints, Sparkles, ChevronLeft, Check } from 'lucide-react';
 import { estimateExercise } from '../services/geminiService';
 
 interface ExerciseModuleProps {
@@ -197,62 +197,70 @@ export const ExerciseModule: React.FC<ExerciseModuleProps> = ({ entries, onAddEn
                 )}
             </div>
 
-            {/* Add Activity Modal */}
+            {/* Full Screen Add Activity Modal */}
             {isAdding && (
-                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-                    <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-10">
-                        <div className="flex justify-between items-center mb-6">
-                             <h2 className="text-xl font-bold">Log Activity</h2>
-                             <button onClick={() => setIsAdding(false)} className="p-2 bg-gray-100 rounded-full"><X size={20} /></button>
-                        </div>
+                <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-in slide-in-from-bottom-5">
+                    
+                    {/* Header */}
+                    <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                        <button onClick={() => setIsAdding(false)} className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full">
+                            <ChevronLeft size={24} />
+                        </button>
+                        <h2 className="text-lg font-bold">Log Activity</h2>
+                        <div className="w-10"></div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-6 space-y-8">
                         
-                        <div className="space-y-4 mb-6">
-                            
-                            {/* Frequent Chips */}
-                            {frequentActivities.length > 0 && (
-                                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                        {/* Frequent Chips */}
+                        {frequentActivities.length > 0 && (
+                            <div>
+                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Quick Add</h3>
+                                <div className="flex flex-wrap gap-2">
                                     {frequentActivities.map(act => (
                                         <button 
                                             key={act}
                                             onClick={() => setName(act)}
-                                            className="px-3 py-1.5 bg-orange-50 text-orange-700 text-xs font-bold rounded-lg whitespace-nowrap border border-orange-100 hover:bg-orange-100"
+                                            className="px-4 py-2 bg-orange-50 text-orange-700 text-sm font-bold rounded-xl border border-orange-100 hover:bg-orange-100 transition-colors"
                                         >
                                             {act}
                                         </button>
                                     ))}
                                 </div>
-                            )}
+                            </div>
+                        )}
 
+                        <div className="space-y-6">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Activity Name</label>
+                                <label className="block text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">Activity Name</label>
                                 <input 
                                     type="text" 
                                     value={name}
                                     onChange={e => setName(e.target.value)}
-                                    placeholder="Running, Yoga..."
-                                    className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 font-semibold"
+                                    placeholder="e.g. Running, Yoga, Cycling"
+                                    className="w-full p-4 bg-gray-50 rounded-2xl text-xl font-semibold outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all"
                                 />
                             </div>
                             
-                            <div className="flex space-x-4">
-                                <div className="flex-1">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Duration (min)</label>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">Duration (min)</label>
                                     <input 
                                         type="number" 
                                         value={duration}
                                         onChange={e => setDuration(e.target.value)}
-                                        placeholder="30"
-                                        className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 font-semibold"
+                                        placeholder="0"
+                                        className="w-full p-4 bg-gray-50 rounded-2xl text-xl font-semibold outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all"
                                     />
                                 </div>
-                                <div className="flex-1 relative">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Calories</label>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">Calories</label>
                                     <input 
                                         type="number" 
                                         value={calories}
                                         onChange={e => setCalories(e.target.value)}
-                                        placeholder="250"
-                                        className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 font-semibold"
+                                        placeholder="0"
+                                        className="w-full p-4 bg-gray-50 rounded-2xl text-xl font-semibold outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all"
                                     />
                                 </div>
                             </div>
@@ -262,24 +270,27 @@ export const ExerciseModule: React.FC<ExerciseModuleProps> = ({ entries, onAddEn
                                 <button 
                                     onClick={handleEstimateCalories}
                                     disabled={isEstimating}
-                                    className="w-full py-2 bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-600 rounded-xl text-sm font-bold flex items-center justify-center space-x-2 border border-indigo-100 hover:bg-indigo-100 transition-colors"
+                                    className="w-full py-4 bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-600 rounded-2xl text-base font-bold flex items-center justify-center space-x-2 border border-indigo-100 hover:bg-indigo-100 transition-all shadow-sm"
                                 >
                                     {isEstimating ? (
-                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-600 border-t-transparent"></div>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-600 border-t-transparent"></div>
                                     ) : (
-                                        <Sparkles size={16} />
+                                        <Sparkles size={20} />
                                     )}
                                     <span>Suggest Calories with AI</span>
                                 </button>
                             )}
                         </div>
+                    </div>
 
-                        <button 
+                    <div className="p-6 border-t border-gray-100 bg-white safe-area-bottom">
+                         <button 
                             onClick={handleSaveManual} 
                             disabled={!name || !duration || !calories}
-                            className="w-full bg-orange-500 disabled:bg-gray-300 text-white rounded-xl font-bold py-4 transition-colors text-lg"
+                            className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white rounded-2xl font-bold py-4 transition-all text-lg shadow-lg flex items-center justify-center space-x-2 active:scale-[0.98]"
                         >
-                            Log Workout
+                            <Check size={24} />
+                            <span>Log Workout</span>
                         </button>
                     </div>
                 </div>

@@ -1,47 +1,66 @@
 import React, { useState } from 'react';
 import { MeasurementEntry, WeightEntry, BodyMeasurements } from '../types';
-import { Ruler, Scale, ChevronRight, History } from 'lucide-react';
+import { Ruler, Scale, ChevronLeft, History, Check } from 'lucide-react';
 
 const SectionTitle = ({ children }: { children?: React.ReactNode }) => (
-    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-2">{children}</h3>
+    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-8 mb-4 border-b border-gray-100 pb-2">{children}</h3>
 );
 
-const InputGroup = ({ label, value, onChange }: { label: string, value: number, onChange: (v: string) => void, children?: React.ReactNode }) => (
-    <div className="flex items-center justify-between py-2 border-b border-gray-100">
-        <label className="text-gray-700 font-medium">{label}</label>
+const InputGroup = ({ label, value, onChange, lastValue }: { label: string, value: number, onChange: (v: string) => void, lastValue?: number }) => (
+    <div className="flex items-center justify-between py-4 border-b border-gray-100">
+        <label className="text-gray-900 font-semibold text-lg">{label}</label>
         <div className="flex items-center space-x-2">
             <input 
                 type="number" 
                 value={value || ''} 
                 onChange={e => onChange(e.target.value)} 
-                placeholder="0"
-                className="w-20 text-right font-bold text-gray-900 focus:text-blue-600 outline-none bg-transparent"
+                placeholder={lastValue !== undefined ? `${lastValue}` : "0"}
+                className={`w-28 text-right text-xl font-bold outline-none bg-transparent transition-colors ${
+                    !value && lastValue !== undefined ? 'placeholder:text-red-400' : 'text-gray-900 placeholder:text-gray-300'
+                }`}
             />
-            <span className="text-gray-400 text-sm">cm</span>
+            <span className="text-gray-400 text-sm font-medium w-6">cm</span>
         </div>
     </div>
 );
 
-const DualInputGroup = ({ label, left, right, onChangeLeft, onChangeRight }: { 
+const DualInputGroup = ({ label, left, right, onChangeLeft, onChangeRight, lastLeft, lastRight }: { 
   label: string; 
   left: number; 
   right: number; 
   onChangeLeft: (v: string) => void; 
   onChangeRight: (v: string) => void;
-  children?: React.ReactNode; 
+  lastLeft?: number;
+  lastRight?: number;
 }) => (
-    <div className="py-2 border-b border-gray-100">
-        <div className="flex justify-between mb-1">
-            <label className="text-gray-700 font-medium">{label}</label>
+    <div className="py-4 border-b border-gray-100">
+        <div className="flex justify-between mb-3">
+            <label className="text-gray-900 font-semibold text-lg">{label}</label>
         </div>
-        <div className="flex space-x-4">
-            <div className="flex-1 bg-gray-50 rounded-lg p-2 flex justify-between items-center">
-                <span className="text-xs text-gray-400">L</span>
-                <input type="number" value={left || ''} onChange={e => onChangeLeft(e.target.value)} className="w-full text-right bg-transparent outline-none font-semibold" placeholder="0" />
+        <div className="flex space-x-6">
+            <div className="flex-1 bg-gray-50 rounded-2xl p-3 flex justify-between items-center relative">
+                <span className="text-xs font-bold text-gray-400 uppercase absolute top-2 left-3">Left</span>
+                <input 
+                    type="number" 
+                    value={left || ''} 
+                    onChange={e => onChangeLeft(e.target.value)} 
+                    placeholder={lastLeft !== undefined ? `${lastLeft}` : "0"}
+                    className={`w-full text-right bg-transparent outline-none text-xl font-bold mt-4 ${
+                         !left && lastLeft !== undefined ? 'placeholder:text-red-400' : 'text-gray-900 placeholder:text-gray-300'
+                    }`}
+                />
             </div>
-            <div className="flex-1 bg-gray-50 rounded-lg p-2 flex justify-between items-center">
-                <span className="text-xs text-gray-400">R</span>
-                <input type="number" value={right || ''} onChange={e => onChangeRight(e.target.value)} className="w-full text-right bg-transparent outline-none font-semibold" placeholder="0" />
+            <div className="flex-1 bg-gray-50 rounded-2xl p-3 flex justify-between items-center relative">
+                <span className="text-xs font-bold text-gray-400 uppercase absolute top-2 left-3">Right</span>
+                <input 
+                    type="number" 
+                    value={right || ''} 
+                    onChange={e => onChangeRight(e.target.value)} 
+                    placeholder={lastRight !== undefined ? `${lastRight}` : "0"}
+                    className={`w-full text-right bg-transparent outline-none text-xl font-bold mt-4 ${
+                         !right && lastRight !== undefined ? 'placeholder:text-red-400' : 'text-gray-900 placeholder:text-gray-300'
+                    }`} 
+                />
             </div>
         </div>
     </div>
@@ -77,6 +96,11 @@ export const BodyModule: React.FC<BodyModuleProps> = ({
     calfRight: 0, calfLeft: 0
   });
 
+  const getLastMeasurements = () => {
+    return measurements.length > 0 ? measurements[measurements.length - 1].measurements : undefined;
+  };
+  const lastMeas = getLastMeasurements();
+
   const handleSaveWeight = () => {
     if (!newWeight) return;
     onAddWeight({
@@ -96,6 +120,13 @@ export const BodyModule: React.FC<BodyModuleProps> = ({
       syncedWeight: currentWeight
     });
     setShowAddMeasure(false);
+    // Reset form to 0 or keep last values? Usually reset implies new entry.
+    setMeasureForm({
+        bust: 0, waist: 0, tummy: 0, hips: 0,
+        thighRight: 0, thighLeft: 0,
+        armRight: 0, armLeft: 0,
+        calfRight: 0, calfLeft: 0
+    });
   };
 
   const handleMeasureChange = (field: keyof BodyMeasurements, value: string) => {
@@ -167,7 +198,7 @@ export const BodyModule: React.FC<BodyModuleProps> = ({
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
              <button 
                 onClick={() => setShowAddMeasure(true)}
-                className="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center space-x-2"
+                className="w-full bg-gray-900 hover:bg-black text-white py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center space-x-2 transition-all"
             >
                 <Ruler size={20} />
                 <span>New Measurement</span>
@@ -212,69 +243,93 @@ export const BodyModule: React.FC<BodyModuleProps> = ({
         </div>
       )}
 
-      {/* Weight Modal */}
+      {/* Full Screen Weight Modal */}
       {showAddWeight && (
-         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
-                <h2 className="text-xl font-bold mb-4">Log Weight</h2>
+         <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-in slide-in-from-bottom-5">
+            <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 bg-white sticky top-0">
+                <button onClick={() => setShowAddWeight(false)} className="p-2 -ml-2 text-gray-500 rounded-full hover:bg-gray-100"><ChevronLeft size={24}/></button>
+                <h2 className="text-lg font-bold">Log Weight</h2>
+                <div className="w-10"></div>
+            </div>
+
+            <div className="flex-1 flex flex-col items-center justify-center p-6">
+                <label className="text-gray-500 font-bold uppercase tracking-wider mb-4">Weight (kg)</label>
                 <input 
                     type="number" 
                     value={newWeight}
                     onChange={e => setNewWeight(e.target.value)}
-                    placeholder="kg"
-                    className="w-full text-center text-4xl font-bold border-b-2 border-gray-200 focus:border-blue-500 outline-none py-4 mb-6"
+                    placeholder={currentWeight ? `${currentWeight}` : "0"}
                     autoFocus
+                    className={`w-full text-center text-6xl font-black bg-transparent outline-none transition-colors ${
+                        !newWeight && currentWeight ? 'placeholder:text-red-400' : 'text-gray-900 placeholder:text-gray-200'
+                    }`}
                 />
-                <div className="flex space-x-3">
-                    <button onClick={() => setShowAddWeight(false)} className="flex-1 py-3 text-gray-600 font-medium">Cancel</button>
-                    <button onClick={handleSaveWeight} className="flex-1 bg-blue-600 text-white rounded-xl font-bold py-3">Save</button>
-                </div>
+            </div>
+
+            <div className="p-6 safe-area-bottom">
+                <button 
+                    onClick={handleSaveWeight} 
+                    disabled={!newWeight}
+                    className="w-full bg-blue-600 disabled:bg-gray-300 hover:bg-blue-700 text-white rounded-2xl font-bold py-4 text-lg shadow-lg flex items-center justify-center space-x-2"
+                >
+                    <Check size={24} />
+                    <span>Save Weight</span>
+                </button>
             </div>
          </div>
       )}
 
-      {/* Measurement Modal */}
+      {/* Full Screen Measurement Modal */}
       {showAddMeasure && (
-         <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl h-[85vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-6 sticky top-0 bg-white z-10 py-2">
-                     <h2 className="text-xl font-bold">New Measurements</h2>
-                     <button onClick={() => setShowAddMeasure(false)} className="text-gray-400">Cancel</button>
+         <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-in slide-in-from-bottom-5">
+            <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                 <button onClick={() => setShowAddMeasure(false)} className="p-2 -ml-2 text-gray-500 rounded-full hover:bg-gray-100"><ChevronLeft size={24}/></button>
+                 <h2 className="text-lg font-bold">New Measurements</h2>
+                 <div className="w-10"></div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-2">
+                <div className="p-4 bg-gray-50 rounded-2xl mb-6 flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-500">Weight at this moment</span>
+                    <span className="text-lg font-bold text-gray-900">{currentWeight} kg</span>
                 </div>
-                
-                <div className="space-y-6 pb-20">
-                    <div className="p-4 bg-gray-50 rounded-xl mb-4 border border-gray-100">
-                        <span className="text-sm text-gray-500 block mb-1">Current Synced Weight</span>
-                        <span className="text-lg font-bold text-gray-900">{currentWeight} kg</span>
-                    </div>
 
-                    <SectionTitle>Core</SectionTitle>
-                    <InputGroup label="Bust" value={measureForm.bust} onChange={v => handleMeasureChange('bust', v)} />
-                    <InputGroup label="Waist" value={measureForm.waist} onChange={v => handleMeasureChange('waist', v)} />
-                    <InputGroup label="Tummy" value={measureForm.tummy} onChange={v => handleMeasureChange('tummy', v)} />
-                    <InputGroup label="Hips" value={measureForm.hips} onChange={v => handleMeasureChange('hips', v)} />
+                <SectionTitle>Core (cm)</SectionTitle>
+                <InputGroup label="Bust" value={measureForm.bust} onChange={v => handleMeasureChange('bust', v)} lastValue={lastMeas?.bust} />
+                <InputGroup label="Waist" value={measureForm.waist} onChange={v => handleMeasureChange('waist', v)} lastValue={lastMeas?.waist} />
+                <InputGroup label="Tummy" value={measureForm.tummy} onChange={v => handleMeasureChange('tummy', v)} lastValue={lastMeas?.tummy} />
+                <InputGroup label="Hips" value={measureForm.hips} onChange={v => handleMeasureChange('hips', v)} lastValue={lastMeas?.hips} />
 
-                    <SectionTitle>Limbs (Left & Right)</SectionTitle>
-                    <DualInputGroup label="Thigh" 
-                        left={measureForm.thighLeft} right={measureForm.thighRight}
-                        onChangeLeft={v => handleMeasureChange('thighLeft', v)}
-                        onChangeRight={v => handleMeasureChange('thighRight', v)}
-                    />
-                    <DualInputGroup label="Arm" 
-                        left={measureForm.armLeft} right={measureForm.armRight}
-                        onChangeLeft={v => handleMeasureChange('armLeft', v)}
-                        onChangeRight={v => handleMeasureChange('armRight', v)}
-                    />
-                    <DualInputGroup label="Calf" 
-                        left={measureForm.calfLeft} right={measureForm.calfRight}
-                        onChangeLeft={v => handleMeasureChange('calfLeft', v)}
-                        onChangeRight={v => handleMeasureChange('calfRight', v)}
-                    />
-                </div>
-                
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 sm:relative sm:border-0 sm:p-0">
-                    <button onClick={handleSaveMeasurement} className="w-full bg-gray-900 text-white rounded-xl py-4 font-bold">Save All</button>
-                </div>
+                <SectionTitle>Limbs (cm)</SectionTitle>
+                <DualInputGroup label="Thigh" 
+                    left={measureForm.thighLeft} right={measureForm.thighRight}
+                    onChangeLeft={v => handleMeasureChange('thighLeft', v)}
+                    onChangeRight={v => handleMeasureChange('thighRight', v)}
+                    lastLeft={lastMeas?.thighLeft} lastRight={lastMeas?.thighRight}
+                />
+                <DualInputGroup label="Arm" 
+                    left={measureForm.armLeft} right={measureForm.armRight}
+                    onChangeLeft={v => handleMeasureChange('armLeft', v)}
+                    onChangeRight={v => handleMeasureChange('armRight', v)}
+                    lastLeft={lastMeas?.armLeft} lastRight={lastMeas?.armRight}
+                />
+                <DualInputGroup label="Calf" 
+                    left={measureForm.calfLeft} right={measureForm.calfRight}
+                    onChangeLeft={v => handleMeasureChange('calfLeft', v)}
+                    onChangeRight={v => handleMeasureChange('calfRight', v)}
+                    lastLeft={lastMeas?.calfLeft} lastRight={lastMeas?.calfRight}
+                />
+                <div className="h-10"></div>
+            </div>
+            
+            <div className="p-6 border-t border-gray-100 bg-white safe-area-bottom">
+                <button 
+                    onClick={handleSaveMeasurement} 
+                    className="w-full bg-gray-900 hover:bg-black text-white rounded-2xl py-4 font-bold text-lg shadow-lg flex items-center justify-center space-x-2"
+                >
+                    <Check size={24} />
+                    <span>Save All</span>
+                </button>
             </div>
          </div>
       )}
