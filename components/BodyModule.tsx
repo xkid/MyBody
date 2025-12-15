@@ -24,43 +24,44 @@ const InputGroup = ({ label, value, onChange, lastValue }: { label: string, valu
     </div>
 );
 
-const DualInputGroup = ({ label, left, right, onChangeLeft, onChangeRight, lastLeft, lastRight }: { 
-  label: string; 
-  left: number; 
-  right: number; 
-  onChangeLeft: (v: string) => void; 
-  onChangeRight: (v: string) => void;
-  lastLeft?: number;
-  lastRight?: number;
+const DualInputGroup = ({ label, leftValue, rightValue, onChange, lastLeft, lastRight }: { 
+    label: string, 
+    leftValue: number, 
+    rightValue: number, 
+    onChange: (side: 'left' | 'right', v: string) => void,
+    lastLeft?: number,
+    lastRight?: number
 }) => (
     <div className="py-4 border-b border-gray-100">
-        <div className="flex justify-between mb-3">
-            <label className="text-gray-900 font-semibold text-lg">{label}</label>
-        </div>
-        <div className="flex space-x-6">
-            <div className="flex-1 bg-gray-50 rounded-2xl p-3 flex justify-between items-center relative">
-                <span className="text-xs font-bold text-gray-400 uppercase absolute top-2 left-3">Left</span>
-                <input 
-                    type="number" 
-                    value={left || ''} 
-                    onChange={e => onChangeLeft(e.target.value)} 
-                    placeholder={lastLeft !== undefined ? `${lastLeft}` : "0"}
-                    className={`w-full text-right bg-transparent outline-none text-xl font-bold mt-4 ${
-                         !left && lastLeft !== undefined ? 'placeholder:text-red-400' : 'text-gray-900 placeholder:text-gray-300'
-                    }`}
-                />
+        <label className="text-gray-900 font-semibold text-lg block mb-2">{label}</label>
+        <div className="flex space-x-4">
+            <div className="flex-1 flex items-center justify-between bg-gray-50 p-3 rounded-xl">
+                <span className="text-gray-400 text-sm font-medium uppercase">L</span>
+                <div className="flex items-center">
+                    <input 
+                        type="number" 
+                        value={leftValue || ''} 
+                        onChange={e => onChange('left', e.target.value)} 
+                        placeholder={lastLeft !== undefined ? `${lastLeft}` : "0"}
+                        className={`w-16 text-right text-lg font-bold outline-none bg-transparent ${
+                            !leftValue && lastLeft !== undefined ? 'placeholder:text-red-400' : 'text-gray-900 placeholder:text-gray-300'
+                        }`}
+                    />
+                </div>
             </div>
-            <div className="flex-1 bg-gray-50 rounded-2xl p-3 flex justify-between items-center relative">
-                <span className="text-xs font-bold text-gray-400 uppercase absolute top-2 left-3">Right</span>
-                <input 
-                    type="number" 
-                    value={right || ''} 
-                    onChange={e => onChangeRight(e.target.value)} 
-                    placeholder={lastRight !== undefined ? `${lastRight}` : "0"}
-                    className={`w-full text-right bg-transparent outline-none text-xl font-bold mt-4 ${
-                         !right && lastRight !== undefined ? 'placeholder:text-red-400' : 'text-gray-900 placeholder:text-gray-300'
-                    }`} 
-                />
+            <div className="flex-1 flex items-center justify-between bg-gray-50 p-3 rounded-xl">
+                <span className="text-gray-400 text-sm font-medium uppercase">R</span>
+                <div className="flex items-center">
+                    <input 
+                        type="number" 
+                        value={rightValue || ''} 
+                        onChange={e => onChange('right', e.target.value)} 
+                        placeholder={lastRight !== undefined ? `${lastRight}` : "0"}
+                        className={`w-16 text-right text-lg font-bold outline-none bg-transparent ${
+                            !rightValue && lastRight !== undefined ? 'placeholder:text-red-400' : 'text-gray-900 placeholder:text-gray-300'
+                        }`}
+                    />
+                </div>
             </div>
         </div>
     </div>
@@ -232,26 +233,12 @@ export const BodyModule: React.FC<BodyModuleProps> = ({
                             <div className="flex justify-between"><span>Waist</span> <span className="font-semibold">{m.measurements.waist}</span></div>
                             <div className="flex justify-between"><span>Hips</span> <span className="font-semibold">{m.measurements.hips}</span></div>
                             <div className="flex justify-between"><span>Tummy</span> <span className="font-semibold">{m.measurements.tummy}</span></div>
-                            
-                            <div className="col-span-2 border-t border-dashed border-gray-200 my-1"></div>
-                            
-                            <div className="flex justify-between text-xs text-gray-500 uppercase tracking-wider col-span-2"><span>Left</span> <span>Right</span></div>
-                            
-                            <div className="flex justify-between items-center col-span-2">
-                                <span className="font-semibold">{m.measurements.thighLeft}</span>
-                                <span className="text-gray-400 text-xs">Thighs</span>
-                                <span className="font-semibold">{m.measurements.thighRight}</span>
-                            </div>
-                             <div className="flex justify-between items-center col-span-2">
-                                <span className="font-semibold">{m.measurements.armLeft}</span>
-                                <span className="text-gray-400 text-xs">Arms</span>
-                                <span className="font-semibold">{m.measurements.armRight}</span>
-                            </div>
-                             <div className="flex justify-between items-center col-span-2">
-                                <span className="font-semibold">{m.measurements.calfLeft}</span>
-                                <span className="text-gray-400 text-xs">Calves</span>
-                                <span className="font-semibold">{m.measurements.calfRight}</span>
-                            </div>
+                        </div>
+                        
+                        <div className="mt-4 pt-4 border-t border-gray-50 grid grid-cols-2 gap-y-2 gap-x-8 text-sm text-gray-500">
+                            <div className="flex justify-between"><span>Arms</span> <span className="font-semibold text-gray-700 text-xs">L:{m.measurements.armLeft} R:{m.measurements.armRight}</span></div>
+                            <div className="flex justify-between"><span>Thighs</span> <span className="font-semibold text-gray-700 text-xs">L:{m.measurements.thighLeft} R:{m.measurements.thighRight}</span></div>
+                            <div className="flex justify-between"><span>Calves</span> <span className="font-semibold text-gray-700 text-xs">L:{m.measurements.calfLeft} R:{m.measurements.calfRight}</span></div>
                         </div>
                     </div>
                 ))}
@@ -317,24 +304,31 @@ export const BodyModule: React.FC<BodyModuleProps> = ({
                 <InputGroup label="Hips" value={measureForm.hips} onChange={v => handleMeasureChange('hips', v)} lastValue={lastMeas?.hips} />
 
                 <SectionTitle>Limbs (cm)</SectionTitle>
-                <DualInputGroup label="Thigh" 
-                    left={measureForm.thighLeft} right={measureForm.thighRight}
-                    onChangeLeft={v => handleMeasureChange('thighLeft', v)}
-                    onChangeRight={v => handleMeasureChange('thighRight', v)}
-                    lastLeft={lastMeas?.thighLeft} lastRight={lastMeas?.thighRight}
+                <DualInputGroup 
+                    label="Arms" 
+                    leftValue={measureForm.armLeft} 
+                    rightValue={measureForm.armRight} 
+                    onChange={(s, v) => handleMeasureChange(s === 'left' ? 'armLeft' : 'armRight', v)}
+                    lastLeft={lastMeas?.armLeft}
+                    lastRight={lastMeas?.armRight}
                 />
-                <DualInputGroup label="Arm" 
-                    left={measureForm.armLeft} right={measureForm.armRight}
-                    onChangeLeft={v => handleMeasureChange('armLeft', v)}
-                    onChangeRight={v => handleMeasureChange('armRight', v)}
-                    lastLeft={lastMeas?.armLeft} lastRight={lastMeas?.armRight}
+                <DualInputGroup 
+                    label="Thighs" 
+                    leftValue={measureForm.thighLeft} 
+                    rightValue={measureForm.thighRight} 
+                    onChange={(s, v) => handleMeasureChange(s === 'left' ? 'thighLeft' : 'thighRight', v)}
+                    lastLeft={lastMeas?.thighLeft}
+                    lastRight={lastMeas?.thighRight}
                 />
-                <DualInputGroup label="Calf" 
-                    left={measureForm.calfLeft} right={measureForm.calfRight}
-                    onChangeLeft={v => handleMeasureChange('calfLeft', v)}
-                    onChangeRight={v => handleMeasureChange('calfRight', v)}
-                    lastLeft={lastMeas?.calfLeft} lastRight={lastMeas?.calfRight}
+                <DualInputGroup 
+                    label="Calves" 
+                    leftValue={measureForm.calfLeft} 
+                    rightValue={measureForm.calfRight} 
+                    onChange={(s, v) => handleMeasureChange(s === 'left' ? 'calfLeft' : 'calfRight', v)}
+                    lastLeft={lastMeas?.calfLeft}
+                    lastRight={lastMeas?.calfRight}
                 />
+
                 <div className="h-10"></div>
             </div>
             
