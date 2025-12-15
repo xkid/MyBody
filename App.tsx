@@ -7,8 +7,7 @@ import { BodyModule } from './components/BodyModule';
 import { ExerciseModule } from './components/ExerciseModule';
 import { StatsModule } from './components/StatsModule';
 import { ProfileSettings } from './components/ProfileSettings';
-import { FixDepositModule } from './components/FixDepositModule';
-import { AppView, UserProfile, FoodEntry, ExerciseEntry, WeightEntry, MeasurementEntry, DailyStats, FixDepositEntry } from './types';
+import { AppView, UserProfile, FoodEntry, ExerciseEntry, WeightEntry, MeasurementEntry, DailyStats } from './types';
 
 // Initial Defaults
 const DEFAULT_PROFILE_ID = 'default_user_1';
@@ -36,7 +35,6 @@ const App: React.FC = () => {
   const [exercises, setExercises] = useState<ExerciseEntry[]>([]);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [measurements, setMeasurements] = useState<MeasurementEntry[]>([]);
-  const [fixDeposits, setFixDeposits] = useState<FixDepositEntry[]>([]);
 
   // 1. Initialization & Migration Logic
   useEffect(() => {
@@ -77,7 +75,6 @@ const App: React.FC = () => {
         migrate('vs_exercises', 'exercises');
         migrate('vs_weights', 'weights');
         migrate('vs_measurements', 'measurements');
-        migrate('vs_fixDeposits', 'fixDeposits');
     }
     setIsInitialized(true);
   }, []);
@@ -99,7 +96,6 @@ const App: React.FC = () => {
     load('exercises', setExercises);
     load('weights', setWeights);
     load('measurements', setMeasurements);
-    load('fixDeposits', setFixDeposits);
 
   }, [currentProfileId, isInitialized]);
 
@@ -119,10 +115,6 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isInitialized && currentProfileId) localStorage.setItem(`vs_measurements_${currentProfileId}`, JSON.stringify(measurements));
   }, [measurements, currentProfileId, isInitialized]);
-
-  useEffect(() => {
-    if (isInitialized && currentProfileId) localStorage.setItem(`vs_fixDeposits_${currentProfileId}`, JSON.stringify(fixDeposits));
-  }, [fixDeposits, currentProfileId, isInitialized]);
 
   // Save Profiles List
   useEffect(() => {
@@ -158,7 +150,6 @@ const App: React.FC = () => {
   const handleDeleteExercise = (id: string) => setExercises(prev => prev.filter(e => e.id !== id));
   const handleDeleteWeight = (id: string) => setWeights(prev => prev.filter(w => w.id !== id));
   const handleDeleteMeasurement = (id: string) => setMeasurements(prev => prev.filter(m => m.id !== id));
-  const handleDeleteFixDeposit = (id: string) => setFixDeposits(prev => prev.filter(f => f.id !== id));
 
   // Derived Data for UI
   const currentProfile = useMemo(() => 
@@ -296,12 +287,6 @@ const App: React.FC = () => {
           onAddMeasurement={(m) => setMeasurements([...measurements, m])}
           onDeleteWeight={handleDeleteWeight}
           onDeleteMeasurement={handleDeleteMeasurement}
-        />;
-      case 'deposits':
-        return <FixDepositModule 
-            entries={fixDeposits}
-            onAddEntry={(fd) => setFixDeposits([...fixDeposits, fd])}
-            onDeleteEntry={handleDeleteFixDeposit}
         />;
       case 'stats':
         return <StatsModule 
