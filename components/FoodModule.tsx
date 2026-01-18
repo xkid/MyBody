@@ -175,7 +175,9 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                </div>
                <div className="flex-1 min-w-0">
                  <h3 className="font-bold text-gray-900 truncate">{entry.name}</h3>
-                 <p className="text-xs text-gray-500">{new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                 <p className="text-xs text-gray-500">
+                    {new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, {new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                 </p>
                </div>
                <div className="flex flex-col items-end">
                   <span className="font-bold text-gray-900 whitespace-nowrap">{entry.calories} kcal</span>
