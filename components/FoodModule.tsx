@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Camera, Plus, Loader2, Search, X, Type, Check, ChevronLeft, Sparkles, RefreshCw } from 'lucide-react';
+import { Camera, Plus, Loader2, Search, X, Type, Check, ChevronLeft, Sparkles, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { FoodEntry } from '../types';
 import { analyzeFood } from '../services/geminiService';
 
@@ -68,7 +68,8 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
   // UI State
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setDescription('');
@@ -93,6 +94,8 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
           setAnalyzing(false);
       }
     }
+    // Reset input value to allow selecting the same file again if needed
+    e.target.value = '';
   };
 
   const handleAnalyze = async (imgData: string | null, textData: string) => {
@@ -203,17 +206,40 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
               {/* Image Section */}
               <div className="relative">
                 <div 
-                    onClick={() => !analyzing && fileInputRef.current?.click()}
-                    className={`w-full aspect-square sm:aspect-video rounded-3xl overflow-hidden flex flex-col items-center justify-center cursor-pointer transition-all ${previewUrl ? 'bg-black' : 'bg-gray-50 border-2 border-dashed border-gray-300 hover:bg-gray-50'}`}
+                    className={`w-full aspect-square sm:aspect-video rounded-3xl overflow-hidden flex flex-col items-center justify-center transition-all ${previewUrl ? 'bg-black' : 'bg-gray-50 border-2 border-dashed border-gray-300'}`}
                 >
                     {previewUrl ? (
-                        <img src={previewUrl} alt="Meal" className="w-full h-full object-contain" />
-                    ) : (
-                        <div className="text-center p-6">
-                            <div className="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 shadow-sm">
-                                <Camera size={32} />
+                        <div className="relative w-full h-full group">
+                            <img src={previewUrl} alt="Meal" className="w-full h-full object-contain" />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4">
+                                <button onClick={() => setPreviewUrl(null)} className="p-2 bg-white/20 text-white rounded-full hover:bg-white/40"><X size={24}/></button>
                             </div>
-                            <p className="font-bold text-gray-900 text-lg">Take a Photo</p>
+                        </div>
+                    ) : (
+                        <div className="text-center p-6 w-full">
+                            {!analyzing && (
+                                <div className="flex justify-center space-x-8 mb-6">
+                                    <button 
+                                        onClick={() => cameraInputRef.current?.click()}
+                                        className="flex flex-col items-center group transition-transform active:scale-95"
+                                    >
+                                        <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center text-blue-600 shadow-sm group-hover:bg-blue-200 transition-colors">
+                                            <Camera size={28} />
+                                        </div>
+                                        <span className="text-sm font-bold mt-2 text-gray-600">Camera</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => galleryInputRef.current?.click()}
+                                        className="flex flex-col items-center group transition-transform active:scale-95"
+                                    >
+                                        <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center text-purple-600 shadow-sm group-hover:bg-purple-200 transition-colors">
+                                            <ImageIcon size={28} />
+                                        </div>
+                                        <span className="text-sm font-bold mt-2 text-gray-600">Gallery</span>
+                                    </button>
+                                </div>
+                            )}
+                            <p className="font-bold text-gray-900 text-lg">Add Food Photo</p>
                             <p className="text-sm text-gray-500 mt-1">AI will identify food & calories</p>
                         </div>
                     )}
@@ -225,12 +251,21 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                         </div>
                     )}
                 </div>
+                
+                {/* Hidden Inputs */}
                 <input 
                     type="file" 
                     accept="image/*" 
                     capture="environment"
                     className="hidden" 
-                    ref={fileInputRef}
+                    ref={cameraInputRef}
+                    onChange={handleFileChange}
+                />
+                <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    ref={galleryInputRef}
                     onChange={handleFileChange}
                 />
               </div>
