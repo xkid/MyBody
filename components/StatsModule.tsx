@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -22,6 +21,102 @@ interface StatsModuleProps {
 type Tab = 'overview' | 'food' | 'exercise' | 'weight' | 'body';
 type ViewMode = 'day' | 'week' | 'month';
 
+// Helpers moved outside component to ensure correct type inference
+const getStartOfDay = (date: Date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const getEndOfDay = (date: Date) => {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+};
+
+const getStartOfWeek = (date: Date) => {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 is Sunday
+  const diff = d.getDate() - day; // adjust when day is sunday
+  d.setDate(diff);
+  d.setHours(0,0,0,0);
+  return d;
+};
+
+const getEndOfWeek = (date: Date) => {
+  const d = getStartOfWeek(date);
+  d.setDate(d.getDate() + 6);
+  d.setHours(23,59,59,999);
+  return d;
+};
+
+const getStartOfMonth = (date: Date) => {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+};
+
+const getEndOfMonth = (date: Date) => {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+};
+
+const getFilterRange = (viewMode: ViewMode, viewDate: Date) => {
+    let start, end;
+    if (viewMode === 'day') {
+        start = getStartOfDay(viewDate);
+        end = getEndOfDay(viewDate);
+    } else if (viewMode === 'week') {
+        start = getStartOfWeek(viewDate);
+        end = getEndOfWeek(viewDate);
+    } else {
+        start = getStartOfMonth(viewDate);
+        end = getEndOfMonth(viewDate);
+    }
+    return { start, end };
+};
+
+const filterData = <T extends { date: string }>(data: T[], start: Date, end: Date): T[] => {
+    return data.filter(item => {
+        const d = new Date(item.date);
+        return d >= start && d <= end;
+    }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+};
+
+const getAggregatedData = <T extends { date: string }>(
+    data: T[], 
+    valueKey: keyof T | ((item: T) => number),
+    start: Date,
+    end: Date,
+    viewMode: ViewMode
+) => {
+    if (viewMode === 'day') return []; 
+
+    const map = new Map<string, any>();
+    let curr = new Date(start);
+    
+    // Initialize map
+    while (curr <= end) {
+        map.set(curr.toLocaleDateString(), { 
+            date: curr.toLocaleDateString(),
+            shortDate: new Date(curr).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+            value: 0 
+        });
+        curr.setDate(curr.getDate() + 1);
+    }
+
+    data.forEach(item => {
+        const d = new Date(item.date);
+        if (d >= start && d <= end) {
+            const dateStr = d.toLocaleDateString();
+            if (map.has(dateStr)) {
+                const entry = map.get(dateStr);
+                const val = typeof valueKey === 'function' ? valueKey(item) : (item[valueKey] as number);
+                entry.value += val;
+            }
+        }
+    });
+
+    return Array.from(map.values());
+};
+
 export const StatsModule: React.FC<StatsModuleProps> = ({ 
     statsHistory, foods, exercises, weights, measurements,
     onDeleteFood, onDeleteExercise, onDeleteWeight, onDeleteMeasurement
@@ -31,43 +126,6 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
   // Unified Date State for all tabs
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [viewDate, setViewDate] = useState<Date>(new Date());
-
-  // Date Helpers
-  const getStartOfDay = (date: Date) => {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
-
-  const getEndOfDay = (date: Date) => {
-    const d = new Date(date);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  };
-
-  const getStartOfWeek = (date: Date) => {
-    const d = new Date(date);
-    const day = d.getDay(); // 0 is Sunday
-    const diff = d.getDate() - day; // adjust when day is sunday
-    d.setDate(diff);
-    d.setHours(0,0,0,0);
-    return d;
-  };
-
-  const getEndOfWeek = (date: Date) => {
-    const d = getStartOfWeek(date);
-    d.setDate(d.getDate() + 6);
-    d.setHours(23,59,59,999);
-    return d;
-  };
-
-  const getStartOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1);
-  };
-
-  const getEndOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
-  };
 
   const getDateRangeLabel = () => {
       if (viewMode === 'day') {
@@ -93,76 +151,17 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
       setViewDate(d);
   };
 
-  // --- Filtering Logic ---
-  const getFilterRange = () => {
-      let start, end;
-      if (viewMode === 'day') {
-          start = getStartOfDay(viewDate);
-          end = getEndOfDay(viewDate);
-      } else if (viewMode === 'week') {
-          start = getStartOfWeek(viewDate);
-          end = getEndOfWeek(viewDate);
-      } else {
-          start = getStartOfMonth(viewDate);
-          end = getEndOfMonth(viewDate);
-      }
-      return { start, end };
-  };
-
-  const filterData = <T extends { date: string }>(data: T[]) => {
-      const { start, end } = getFilterRange();
-      return data.filter(item => {
-          const d = new Date(item.date);
-          return d >= start && d <= end;
-      }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  };
-
-  // -- Aggregation for Charts --
-  const getAggregatedData = <T extends { date: string }>(
-      data: T[], 
-      valueKey: keyof T | ((item: T) => number),
-      label: string
-  ) => {
-      if (viewMode === 'day') return []; 
-
-      const map = new Map<string, any>();
-      const { start, end } = getFilterRange();
-      let curr = new Date(start);
-      
-      // Initialize map
-      while (curr <= end) {
-          map.set(curr.toLocaleDateString(), { 
-              date: curr.toLocaleDateString(),
-              shortDate: new Date(curr).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
-              value: 0 
-          });
-          curr.setDate(curr.getDate() + 1);
-      }
-
-      data.forEach(item => {
-          const d = new Date(item.date);
-          if (d >= start && d <= end) {
-              const dateStr = d.toLocaleDateString();
-              if (map.has(dateStr)) {
-                  const entry = map.get(dateStr);
-                  const val = typeof valueKey === 'function' ? valueKey(item) : (item[valueKey] as number);
-                  entry.value += val;
-              }
-          }
-      });
-
-      return Array.from(map.values());
-  };
+  // Get current filter range
+  const { start, end } = getFilterRange(viewMode, viewDate);
 
   // Specific Data filtering
-  const filteredFoods = filterData(foods);
-  const filteredExercises = filterData(exercises);
-  const filteredWeights = filterData(weights);
-  const filteredMeasurements = filterData(measurements);
+  const filteredFoods = useMemo(() => filterData(foods, start, end), [foods, start, end]);
+  const filteredExercises = useMemo(() => filterData(exercises, start, end), [exercises, start, end]);
+  const filteredWeights = useMemo(() => filterData(weights, start, end), [weights, start, end]);
+  const filteredMeasurements = useMemo(() => filterData(measurements, start, end), [measurements, start, end]);
   
   // Data for Charts
   const overviewChartData = useMemo(() => {
-      const { start, end } = getFilterRange();
       const map = new Map<string, any>();
       let curr = new Date(start);
       while(curr <= end) {
@@ -175,9 +174,6 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
           curr.setDate(curr.getDate() + 1);
       }
       
-      // Fill from statsHistory or aggregate from raw data if statsHistory is incomplete for range
-      // Using statsHistory is safer for consistency if available, but for now let's aggregate manually to ensure it matches current filters
-      // Actually, statsHistory is computed in App.tsx from foods/exercises. Let's use that.
       statsHistory.forEach(s => {
           const d = new Date(s.date);
           if (d >= start && d <= end) {
@@ -190,10 +186,10 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
           }
       });
       return Array.from(map.values());
-  }, [statsHistory, viewMode, viewDate]);
+  }, [statsHistory, start, end]);
 
-  const foodChartData = getAggregatedData(foods, 'calories', 'Calories');
-  const exerciseChartData = getAggregatedData(exercises, 'caloriesBurned', 'Burned');
+  const foodChartData = useMemo(() => getAggregatedData(foods, 'calories', start, end, viewMode), [foods, start, end, viewMode]);
+  const exerciseChartData = useMemo(() => getAggregatedData(exercises, 'caloriesBurned', start, end, viewMode), [exercises, start, end, viewMode]);
   
   // Weight Line Chart Data (Non-aggregated, just chronological points)
   const weightChartData = useMemo(() => {

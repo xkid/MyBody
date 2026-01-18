@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { UserProfile } from '../types';
-import { User, Plus, Check, Database, Download, Upload, Trash2, AlertTriangle } from 'lucide-react';
+import { User, Plus, Check, Database, Download, Upload, Trash2, AlertTriangle, FileJson } from 'lucide-react';
 
 interface ProfileSettingsProps {
   currentProfile: UserProfile;
@@ -43,17 +43,28 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   // Data Management Functions
   const handleExport = () => {
     const data: Record<string, any> = {};
+    
+    // 1. Gather App Data
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key && key.startsWith('vs_')) {
             data[key] = localStorage.getItem(key);
         }
     }
+
+    // 2. Add Metadata (using a non-vs key for backward compatibility with older import logic that filters for 'vs_')
+    data['getfit_backup_meta'] = {
+        version: appVersion,
+        timestamp: new Date().toISOString(),
+        platform: 'web',
+        entryCount: Object.keys(data).length
+    };
+
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `getfit_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `getfit_backup_v${appVersion.replace(/\./g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -64,22 +75,62 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     
-    if (!window.confirm("Importing data will overwrite existing data with the same keys. Continue?")) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
         try {
-            const data = JSON.parse(event.target?.result as string);
-            Object.keys(data).forEach(key => {
-                if (key.startsWith('vs_')) {
-                    localStorage.setItem(key, data[key]);
+            const jsonStr = event.target?.result as string;
+            const backupData = JSON.parse(jsonStr);
+            
+            // Check for metadata
+            const meta = backupData['getfit_backup_meta'];
+            let confirmMsg = "This will overwrite your current data with the backup. Continue?";
+            
+            if (meta) {
+                confirmMsg = `Found backup from version ${meta.version || 'Unknown'} (${new Date(meta.timestamp).toLocaleDateString()}).\n\nThis will overwrite your current data. Continue?`;
+            }
+
+            if (!window.confirm(confirmMsg)) {
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                return;
+            }
+
+            // Perform Import
+            // We only import keys starting with 'vs_' to ensure we only touch app data
+            // This also naturally filters out the 'getfit_backup_meta' key
+            let importCount = 0;
+            
+            // Optional: Clear existing app data to ensure clean state (prevent zombie data)
+            // We collect keys to remove first to avoid modifying iterating collection
+            const keysToRemove: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('vs_')) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+
+            // Restore keys
+            Object.keys(backupData).forEach(key => {
+                if (key.startsWith('vs_') && typeof backupData[key] === 'string') {
+                    localStorage.setItem(key, backupData[key]);
+                    importCount++;
                 }
             });
-            alert("Data imported successfully. The app will now reload.");
-            window.location.reload();
+
+            if (importCount > 0) {
+                alert(`Successfully imported ${importCount} data items. The app will now reload to apply changes.`);
+                window.location.reload();
+            } else {
+                alert("No valid data found in this file.");
+            }
+
         } catch (error) {
-            alert("Failed to parse backup file.");
+            console.error(error);
+            alert("Failed to parse backup file. Please ensure it is a valid JSON file.");
         }
+        // Reset input
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file);
   };
@@ -201,55 +252,61 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
       {/* Data Management Section */}
       <div className="space-y-4">
-        <h2 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
-            <Database size={20} className="text-gray-500" />
-            <span>Data Management</span>
-        </h2>
+        <div className="flex items-center space-x-2 text-gray-900">
+            <Database size={24} className="text-gray-500" />
+            <div>
+                <h2 className="text-xl font-bold">Data Management</h2>
+                <p className="text-xs text-gray-500">Backup and restore your health data.</p>
+            </div>
+        </div>
         
         <div className="grid grid-cols-1 gap-3">
             <button 
                 onClick={handleExport}
-                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold py-3 rounded-xl flex items-center justify-center space-x-2"
+                className="w-full bg-blue-50 border border-blue-100 hover:bg-blue-100 text-blue-700 font-semibold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-colors"
             >
-                <Download size={18} />
-                <span>Export Data Backup (JSON)</span>
+                <Download size={20} />
+                <span>Backup Data (JSON)</span>
             </button>
             
             <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold py-3 rounded-xl flex items-center justify-center space-x-2"
+                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-colors"
             >
-                <Upload size={18} />
-                <span>Import Backup</span>
+                <Upload size={20} />
+                <span>Restore from Backup</span>
             </button>
             <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" className="hidden" />
             
             <button 
                 onClick={initiateReset}
-                className="w-full bg-red-50 hover:bg-red-100 border border-red-100 text-red-600 font-semibold py-3 rounded-xl flex items-center justify-center space-x-2 mt-4"
+                className="w-full bg-red-50 hover:bg-red-100 border border-red-100 text-red-600 font-semibold py-4 rounded-2xl flex items-center justify-center space-x-2 mt-2 transition-colors"
             >
-                <Trash2 size={18} />
-                <span>Reset All Data</span>
+                <Trash2 size={20} />
+                <span>Factory Reset</span>
             </button>
         </div>
       </div>
 
       {/* Version Footer */}
       <div className="text-center py-8">
-          <p className="text-xs text-gray-400 font-medium">GetFit</p>
-          <p className="text-[10px] text-gray-300">Version {appVersion}</p>
+          <div className="flex justify-center items-center space-x-2 text-gray-300 mb-1">
+              <FileJson size={14} />
+              <span className="text-xs font-mono">{appVersion}</span>
+          </div>
+          <p className="text-[10px] text-gray-300">GetFit Health Tracker</p>
       </div>
 
       {/* Reset Confirmation Modal */}
       {showResetModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
             <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
                 <div className="flex flex-col items-center text-center mb-4">
                     <div className="bg-red-100 p-3 rounded-full text-red-600 mb-4">
                         <AlertTriangle size={32} />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900">Factory Reset</h3>
-                    <p className="text-sm text-gray-500 mt-2">This will wipe ALL data from this device locally.</p>
+                    <p className="text-sm text-gray-500 mt-2">This will wipe ALL data from this device locally. This action cannot be undone.</p>
                 </div>
                 
                 <div className="space-y-4">
