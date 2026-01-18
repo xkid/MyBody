@@ -7,7 +7,7 @@ import { BodyModule } from './components/BodyModule';
 import { ExerciseModule } from './components/ExerciseModule';
 import { StatsModule } from './components/StatsModule';
 import { ProfileSettings } from './components/ProfileSettings';
-import { AppView, UserProfile, FoodEntry, ExerciseEntry, WeightEntry, MeasurementEntry, DailyStats } from './types';
+import { AppView, UserProfile, FoodEntry, ExerciseEntry, WeightEntry, MeasurementEntry, DailyStats, ExerciseReminder } from './types';
 import { Info, X } from 'lucide-react';
 
 // Initial Defaults
@@ -18,10 +18,11 @@ const INITIAL_PROFILE: UserProfile = {
   gender: "female",
   age: 30,
   heightCm: 165,
+  reminders: []
 };
 
 // Application Version - Bump this to trigger the update modal
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
@@ -60,8 +61,27 @@ const App: React.FC = () => {
       if (storedProfilesStr) {
           // Normal Load
           const parsedProfiles = JSON.parse(storedProfilesStr);
-          setProfiles(parsedProfiles);
-          setCurrentProfileId(storedActiveId && parsedProfiles.find((p: UserProfile) => p.id === storedActiveId) ? storedActiveId : parsedProfiles[0].id);
+          
+          // Migration: Ensure reminders array exists
+          const migratedProfiles = parsedProfiles.map((p: any) => {
+             if (!p.reminders) {
+                 // Migrate old single reminder if it exists
+                 const reminders: ExerciseReminder[] = [];
+                 if (p.exerciseReminderTime && p.exerciseReminderEnabled) {
+                     reminders.push({
+                         id: 'legacy_migration',
+                         time: p.exerciseReminderTime,
+                         days: [0, 1, 2, 3, 4, 5, 6], // Default to every day
+                         enabled: true
+                     });
+                 }
+                 return { ...p, reminders };
+             }
+             return p;
+          });
+
+          setProfiles(migratedProfiles);
+          setCurrentProfileId(storedActiveId && migratedProfiles.find((p: UserProfile) => p.id === storedActiveId) ? storedActiveId : migratedProfiles[0].id);
       } else {
           // First Time or Migration
           const legacyProfileStr = localStorage.getItem('vs_profile');
@@ -70,6 +90,15 @@ const App: React.FC = () => {
           if (legacyProfileStr) {
               const legacy = JSON.parse(legacyProfileStr);
               initialProfile = { ...INITIAL_PROFILE, ...legacy, id: DEFAULT_PROFILE_ID };
+              // Handle legacy reminder migration for single profile
+              if ((legacy as any).exerciseReminderTime && !initialProfile.reminders.length) {
+                  initialProfile.reminders.push({
+                      id: 'legacy',
+                      time: (legacy as any).exerciseReminderTime,
+                      days: [0, 1, 2, 3, 4, 5, 6],
+                      enabled: (legacy as any).exerciseReminderEnabled || false
+                  });
+              }
           }
 
           const newProfiles = [initialProfile];
@@ -168,7 +197,8 @@ const App: React.FC = () => {
           name: "New User",
           gender: "female",
           age: 25,
-          heightCm: 160
+          heightCm: 160,
+          reminders: []
       };
       setProfiles(prev => [...prev, newProfile]);
       setCurrentProfileId(newId); // Switch to new user immediately
@@ -288,17 +318,27 @@ const App: React.FC = () => {
 
   // Exercise Notification Logic
   useEffect(() => {
-    if (!currentProfile.exerciseReminderEnabled || !currentProfile.exerciseReminderTime) return;
+    if (!currentProfile.reminders || currentProfile.reminders.length === 0) return;
 
     const checkReminder = () => {
         const now = new Date();
         const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        const currentDay = now.getDay(); // 0 = Sunday
+
+        // Check if any enabled reminder matches today and current time
+        const activeReminder = currentProfile.reminders.find(r => 
+            r.enabled && 
+            r.time === currentTime && 
+            r.days.includes(currentDay)
+        );
         
-        if (currentTime === currentProfile.exerciseReminderTime) {
-             const lastNotified = localStorage.getItem(`last_exercise_notification_${currentProfile.id}`);
+        if (activeReminder) {
+             // Create a composite key for the last notification: profileID + day string + time string
+             // This prevents multiple alerts in the same minute/day
+             const notificationKey = `last_exercise_notification_${currentProfile.id}`;
              const todayStr = now.toDateString() + ':' + currentTime;
+             const lastNotified = localStorage.getItem(notificationKey);
              
-             // Ensure we only notify once per minute/day combo
              if (lastNotified !== todayStr) {
                  if ("Notification" in window && Notification.permission === "granted") {
                      new Notification("GetFit Time!", {
@@ -306,7 +346,7 @@ const App: React.FC = () => {
                          icon: "/icon.png"
                      });
                  }
-                 localStorage.setItem(`last_exercise_notification_${currentProfile.id}`, todayStr);
+                 localStorage.setItem(notificationKey, todayStr);
              }
         }
     };
@@ -406,9 +446,9 @@ const App: React.FC = () => {
                     <div className="space-y-3 text-gray-600 text-sm">
                         <p>Welcome to version {APP_VERSION}. Here is what's new:</p>
                         <ul className="list-disc pl-5 space-y-1">
-                            <li><span className="font-semibold">Exercise Reminders:</span> Set a daily reminder to keep up with your routine.</li>
-                            <li><span className="font-semibold">Rebranding:</span> We are now GetFit! Same great features, new name.</li>
-                            <li>Enhanced performance and minor bug fixes.</li>
+                            <li><span className="font-semibold">Flexible Reminders:</span> Add multiple exercise reminders for different days of the week!</li>
+                            <li><span className="font-semibold">Notifications:</span> Better controls for your daily alerts.</li>
+                            <li>Performance improvements.</li>
                         </ul>
                     </div>
                     <button 

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ExerciseEntry, UserProfile } from '../types';
-import { Plus, Timer, Flame, X, Footprints, Sparkles, ChevronLeft, Check, Bell, BellRing, Clock } from 'lucide-react';
+import { ExerciseEntry, UserProfile, ExerciseReminder } from '../types';
+import { Plus, Timer, Flame, X, Footprints, Sparkles, ChevronLeft, Check, Bell, BellRing, Trash2 } from 'lucide-react';
 import { estimateExercise } from '../services/geminiService';
 
 interface ExerciseModuleProps {
@@ -11,6 +11,8 @@ interface ExerciseModuleProps {
   userProfile: UserProfile;
   onUpdateProfile: (p: UserProfile) => void;
 }
+
+const DAYS_OF_WEEK = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export const ExerciseModule: React.FC<ExerciseModuleProps> = ({ 
     entries, 
@@ -31,9 +33,14 @@ export const ExerciseModule: React.FC<ExerciseModuleProps> = ({
     // Quick Steps State
     const [dailyStepTotal, setDailyStepTotal] = useState('');
 
-    // Reminder State
-    const [reminderTime, setReminderTime] = useState(userProfile.exerciseReminderTime || '08:00');
-    const [reminderEnabled, setReminderEnabled] = useState(userProfile.exerciseReminderEnabled || false);
+    // Local Reminder State for Editing
+    const [localReminders, setLocalReminders] = useState<ExerciseReminder[]>([]);
+
+    useEffect(() => {
+        if (showReminderSettings) {
+            setLocalReminders(userProfile.reminders || []);
+        }
+    }, [showReminderSettings, userProfile.reminders]);
 
     // Calculate existing steps for today
     const stepsTodaySoFar = useMemo(() => {
@@ -108,26 +115,56 @@ export const ExerciseModule: React.FC<ExerciseModuleProps> = ({
         setDailyStepTotal('');
     };
 
-    const handleSaveReminder = async () => {
-        if (reminderEnabled) {
+    // --- Reminder Logic ---
+
+    const addReminder = () => {
+        const newReminder: ExerciseReminder = {
+            id: Date.now().toString(),
+            time: "08:00",
+            days: [1, 2, 3, 4, 5], // Mon-Fri default
+            enabled: true
+        };
+        setLocalReminders([...localReminders, newReminder]);
+    };
+
+    const updateReminder = (id: string, updates: Partial<ExerciseReminder>) => {
+        setLocalReminders(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+    };
+
+    const deleteReminder = (id: string) => {
+        setLocalReminders(prev => prev.filter(r => r.id !== id));
+    };
+
+    const toggleDay = (reminderId: string, dayIndex: number) => {
+        const reminder = localReminders.find(r => r.id === reminderId);
+        if (!reminder) return;
+
+        const newDays = reminder.days.includes(dayIndex)
+            ? reminder.days.filter(d => d !== dayIndex)
+            : [...reminder.days, dayIndex].sort();
+        
+        updateReminder(reminderId, { days: newDays });
+    };
+
+    const handleSaveReminders = async () => {
+        // Request permission if any reminder is enabled
+        const hasEnabled = localReminders.some(r => r.enabled);
+        if (hasEnabled) {
             if (!("Notification" in window)) {
                 alert("This browser does not support desktop notification");
-                return;
-            }
-            if (Notification.permission !== 'granted') {
+            } else if (Notification.permission !== 'granted') {
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') {
                     alert("Notification permission denied. We cannot send reminders.");
-                    setReminderEnabled(false);
-                    return;
+                    // Optional: Disable all reminders? Or just let them be "enabled" but ineffective?
+                    // Let's keep them enabled in UI but user knows.
                 }
             }
         }
 
         onUpdateProfile({
             ...userProfile,
-            exerciseReminderTime: reminderTime,
-            exerciseReminderEnabled: reminderEnabled
+            reminders: localReminders
         });
         setShowReminderSettings(false);
     };
@@ -145,9 +182,9 @@ export const ExerciseModule: React.FC<ExerciseModuleProps> = ({
                 <div className="flex space-x-2">
                     <button 
                         onClick={() => setShowReminderSettings(true)}
-                        className={`p-2 rounded-full shadow-md transition-colors ${userProfile.exerciseReminderEnabled ? 'bg-indigo-100 text-indigo-600' : 'bg-white text-gray-400'}`}
+                        className={`p-2 rounded-full shadow-md transition-colors ${userProfile.reminders && userProfile.reminders.some(r => r.enabled) ? 'bg-indigo-100 text-indigo-600' : 'bg-white text-gray-400'}`}
                     >
-                        {userProfile.exerciseReminderEnabled ? <BellRing size={24} /> : <Bell size={24} />}
+                        {userProfile.reminders && userProfile.reminders.some(r => r.enabled) ? <BellRing size={24} /> : <Bell size={24} />}
                     </button>
                     <button 
                         onClick={() => setIsAdding(true)}
@@ -245,8 +282,8 @@ export const ExerciseModule: React.FC<ExerciseModuleProps> = ({
 
             {/* Reminder Settings Modal */}
             {showReminderSettings && (
-                <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
-                    <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
+                <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex flex-col items-center justify-end sm:justify-center p-0 sm:p-6 animate-in fade-in">
+                    <div className="bg-white rounded-t-3xl sm:rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in slide-in-from-bottom-10 max-h-[85vh] flex flex-col">
                         <div className="flex justify-between items-start mb-4">
                             <div className="bg-indigo-100 p-3 rounded-full text-indigo-600">
                                 <BellRing size={24} />
@@ -255,40 +292,74 @@ export const ExerciseModule: React.FC<ExerciseModuleProps> = ({
                                 <X size={24} />
                             </button>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Daily Reminder</h3>
-                        <p className="text-sm text-gray-500 mb-6">Get notified to start your workout.</p>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Workout Reminders</h3>
+                        <p className="text-sm text-gray-500 mb-6">Stay consistent with scheduled notifications.</p>
                         
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between bg-gray-50 p-4 rounded-xl">
-                                <span className="font-semibold text-gray-700">Enable Reminders</span>
-                                <button 
-                                    onClick={() => setReminderEnabled(!reminderEnabled)}
-                                    className={`w-12 h-7 rounded-full transition-colors relative ${reminderEnabled ? 'bg-indigo-600' : 'bg-gray-300'}`}
-                                >
-                                    <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-transform ${reminderEnabled ? 'left-6' : 'left-1'}`} />
-                                </button>
-                            </div>
-
-                            <div className={`transition-opacity ${reminderEnabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Time</label>
-                                <div className="relative">
-                                    <input 
-                                        type="time" 
-                                        value={reminderTime}
-                                        onChange={(e) => setReminderTime(e.target.value)}
-                                        className="w-full p-4 bg-gray-50 rounded-xl font-bold text-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                                    />
-                                    <Clock className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar mb-4">
+                            {localReminders.length === 0 ? (
+                                <div className="text-center py-8 text-gray-400 border-2 border-dashed border-gray-100 rounded-xl">
+                                    <p className="text-sm">No reminders set.</p>
                                 </div>
-                            </div>
-
-                            <button 
-                                onClick={handleSaveReminder}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl mt-4"
-                            >
-                                Save Settings
-                            </button>
+                            ) : (
+                                localReminders.map(reminder => (
+                                    <div key={reminder.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <input 
+                                                type="time" 
+                                                value={reminder.time}
+                                                onChange={(e) => updateReminder(reminder.id, { time: e.target.value })}
+                                                className="bg-transparent font-bold text-xl text-gray-900 outline-none p-0 focus:bg-white rounded"
+                                            />
+                                            <div className="flex items-center space-x-3">
+                                                {/* Toggle */}
+                                                <button 
+                                                    onClick={() => updateReminder(reminder.id, { enabled: !reminder.enabled })}
+                                                    className={`w-10 h-6 rounded-full transition-colors relative ${reminder.enabled ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                                                >
+                                                    <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${reminder.enabled ? 'left-5' : 'left-1'}`} />
+                                                </button>
+                                                {/* Delete */}
+                                                <button onClick={() => deleteReminder(reminder.id)} className="text-gray-400 hover:text-red-500">
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Day Selector */}
+                                        <div className="flex justify-between">
+                                            {DAYS_OF_WEEK.map((day, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => toggleDay(reminder.id, idx)}
+                                                    className={`w-8 h-8 text-xs font-bold rounded-full transition-all ${
+                                                        reminder.days.includes(idx) 
+                                                            ? 'bg-indigo-600 text-white shadow-sm' 
+                                                            : 'bg-white text-gray-400 border border-gray-200'
+                                                    }`}
+                                                >
+                                                    {day}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
+
+                        <button 
+                            onClick={addReminder}
+                            className="w-full py-3 mb-3 border-2 border-dashed border-indigo-100 text-indigo-600 font-bold rounded-xl hover:bg-indigo-50 transition-colors flex items-center justify-center space-x-2"
+                        >
+                            <Plus size={20} />
+                            <span>Add Reminder</span>
+                        </button>
+
+                        <button 
+                            onClick={handleSaveReminders}
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-[0.98]"
+                        >
+                            Save Settings
+                        </button>
                     </div>
                 </div>
             )}

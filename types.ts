@@ -43,6 +43,12 @@ export interface ExerciseEntry {
   steps?: number; // Added steps tracking
 }
 
+export interface ExerciseReminder {
+  id: string;
+  time: string; // HH:MM
+  days: number[]; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  enabled: boolean;
+}
 
 export interface UserProfile {
   id: string; // Unique ID for profile
@@ -51,8 +57,7 @@ export interface UserProfile {
   age: number;
   heightCm: number;
   targetWeight?: number;
-  exerciseReminderTime?: string; // HH:MM
-  exerciseReminderEnabled?: boolean;
+  reminders: ExerciseReminder[];
 }
 
 export type AppView = 'dashboard' | 'food' | 'exercise' | 'body' | 'stats' | 'settings' ;
