@@ -36,45 +36,61 @@ const App: React.FC = () => {
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [measurements, setMeasurements] = useState<MeasurementEntry[]>([]);
 
+  // Safe Storage Helper
+  const saveToStorage = (key: string, data: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+      console.error(`Failed to save ${key} to localStorage:`, e);
+      // Could trigger a toast notification here if UI allows
+    }
+  };
+
   // 1. Initialization & Migration Logic
   useEffect(() => {
-    const storedProfilesStr = localStorage.getItem('vs_profiles');
-    const storedActiveId = localStorage.getItem('vs_active_id');
+    try {
+      const storedProfilesStr = localStorage.getItem('vs_profiles');
+      const storedActiveId = localStorage.getItem('vs_active_id');
 
-    if (storedProfilesStr) {
-        // Normal Load
-        const parsedProfiles = JSON.parse(storedProfilesStr);
-        setProfiles(parsedProfiles);
-        setCurrentProfileId(storedActiveId && parsedProfiles.find((p: UserProfile) => p.id === storedActiveId) ? storedActiveId : parsedProfiles[0].id);
-    } else {
-        // First Time or Migration
-        const legacyProfileStr = localStorage.getItem('vs_profile');
-        let initialProfile = INITIAL_PROFILE;
-        
-        if (legacyProfileStr) {
-            const legacy = JSON.parse(legacyProfileStr);
-            initialProfile = { ...INITIAL_PROFILE, ...legacy, id: DEFAULT_PROFILE_ID };
-        }
+      if (storedProfilesStr) {
+          // Normal Load
+          const parsedProfiles = JSON.parse(storedProfilesStr);
+          setProfiles(parsedProfiles);
+          setCurrentProfileId(storedActiveId && parsedProfiles.find((p: UserProfile) => p.id === storedActiveId) ? storedActiveId : parsedProfiles[0].id);
+      } else {
+          // First Time or Migration
+          const legacyProfileStr = localStorage.getItem('vs_profile');
+          let initialProfile = INITIAL_PROFILE;
+          
+          if (legacyProfileStr) {
+              const legacy = JSON.parse(legacyProfileStr);
+              initialProfile = { ...INITIAL_PROFILE, ...legacy, id: DEFAULT_PROFILE_ID };
+          }
 
-        const newProfiles = [initialProfile];
-        setProfiles(newProfiles);
-        setCurrentProfileId(initialProfile.id);
-        localStorage.setItem('vs_profiles', JSON.stringify(newProfiles));
-        localStorage.setItem('vs_active_id', initialProfile.id);
+          const newProfiles = [initialProfile];
+          setProfiles(newProfiles);
+          setCurrentProfileId(initialProfile.id);
+          saveToStorage('vs_profiles', newProfiles);
+          saveToStorage('vs_active_id', initialProfile.id);
 
-        // Migrate Legacy Data if exists
-        const migrate = (oldKey: string, newKeySuffix: string) => {
-            const data = localStorage.getItem(oldKey);
-            if (data) {
-                localStorage.setItem(`vs_${newKeySuffix}_${initialProfile.id}`, data);
-                // Optional: localStorage.removeItem(oldKey); // Keep for safety
-            }
-        };
+          // Migrate Legacy Data if exists
+          const migrate = (oldKey: string, newKeySuffix: string) => {
+              const data = localStorage.getItem(oldKey);
+              if (data) {
+                  saveToStorage(`vs_${newKeySuffix}_${initialProfile.id}`, data);
+              }
+          };
 
-        migrate('vs_foods', 'foods');
-        migrate('vs_exercises', 'exercises');
-        migrate('vs_weights', 'weights');
-        migrate('vs_measurements', 'measurements');
+          migrate('vs_foods', 'foods');
+          migrate('vs_exercises', 'exercises');
+          migrate('vs_weights', 'weights');
+          migrate('vs_measurements', 'measurements');
+      }
+    } catch (e) {
+      console.error("Initialization Error:", e);
+      // Fallback
+      setProfiles([INITIAL_PROFILE]);
+      setCurrentProfileId(DEFAULT_PROFILE_ID);
     }
     setIsInitialized(true);
   }, []);
@@ -83,13 +99,17 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!currentProfileId || !isInitialized) return;
 
-    // Persist active ID
-    localStorage.setItem('vs_active_id', currentProfileId);
+    saveToStorage('vs_active_id', currentProfileId);
 
     const load = (key: string, setter: any) => {
-        const data = localStorage.getItem(`vs_${key}_${currentProfileId}`);
-        if (data) setter(JSON.parse(data));
-        else setter([]);
+        try {
+          const data = localStorage.getItem(`vs_${key}_${currentProfileId}`);
+          if (data) setter(JSON.parse(data));
+          else setter([]);
+        } catch (e) {
+          console.error(`Error loading ${key}:`, e);
+          setter([]);
+        }
     };
 
     load('foods', setFoods);
@@ -100,25 +120,26 @@ const App: React.FC = () => {
   }, [currentProfileId, isInitialized]);
 
   // 3. Save Data Effects (Save specific to profile ID)
+  // We check isInitialized to avoid overwriting data with empty arrays during initial load
   useEffect(() => {
-    if (isInitialized && currentProfileId) localStorage.setItem(`vs_foods_${currentProfileId}`, JSON.stringify(foods));
+    if (isInitialized && currentProfileId) saveToStorage(`vs_foods_${currentProfileId}`, foods);
   }, [foods, currentProfileId, isInitialized]);
 
   useEffect(() => {
-    if (isInitialized && currentProfileId) localStorage.setItem(`vs_exercises_${currentProfileId}`, JSON.stringify(exercises));
+    if (isInitialized && currentProfileId) saveToStorage(`vs_exercises_${currentProfileId}`, exercises);
   }, [exercises, currentProfileId, isInitialized]);
 
   useEffect(() => {
-    if (isInitialized && currentProfileId) localStorage.setItem(`vs_weights_${currentProfileId}`, JSON.stringify(weights));
+    if (isInitialized && currentProfileId) saveToStorage(`vs_weights_${currentProfileId}`, weights);
   }, [weights, currentProfileId, isInitialized]);
 
   useEffect(() => {
-    if (isInitialized && currentProfileId) localStorage.setItem(`vs_measurements_${currentProfileId}`, JSON.stringify(measurements));
+    if (isInitialized && currentProfileId) saveToStorage(`vs_measurements_${currentProfileId}`, measurements);
   }, [measurements, currentProfileId, isInitialized]);
 
   // Save Profiles List
   useEffect(() => {
-    if (isInitialized && profiles.length > 0) localStorage.setItem('vs_profiles', JSON.stringify(profiles));
+    if (isInitialized && profiles.length > 0) saveToStorage('vs_profiles', profiles);
   }, [profiles, isInitialized]);
 
 

@@ -75,7 +75,7 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
   const TabButton = ({ id, label, icon: Icon }: { id: Tab, label: string, icon: any }) => (
       <button 
         onClick={() => setActiveTab(id)}
-        className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap flex-shrink-0 ${
+        className={`flex items-center space-x-2 px-4 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap flex-shrink-0 active:scale-95 touch-manipulation ${
             activeTab === id ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100'
         }`}
       >
@@ -90,12 +90,12 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Trends & Data</h1>
         
         {/* Period Toggle */}
-        <div className="bg-gray-100 p-1 rounded-xl flex mb-6">
+        <div className="bg-gray-100 p-1.5 rounded-2xl flex mb-6">
             {(['daily', 'monthly', 'annual'] as Period[]).map(p => (
                 <button 
                     key={p}
                     onClick={() => setPeriod(p)}
-                    className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wide rounded-lg transition-all ${
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wide rounded-xl transition-all touch-manipulation ${
                         period === p ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
                     }`}
                 >
@@ -105,7 +105,7 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
         </div>
 
         {/* Module Tabs - Scrollable */}
-        <div className="flex space-x-3 overflow-x-auto pb-2 no-scrollbar -mx-6 px-6">
+        <div className="flex space-x-3 overflow-x-auto pb-4 no-scrollbar -mx-6 px-6">
             <TabButton id="overview" label="Overview" icon={Calendar} />
             <TabButton id="food" label="Food" icon={Utensils} />
             <TabButton id="exercise" label="Exercise" icon={Dumbbell} />
@@ -120,18 +120,18 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
         {activeTab === 'overview' && (
             <div className="space-y-6">
                  {/* Calories Chart */}
-                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                     <h3 className="font-bold text-gray-900 mb-4">Calorie Balance</h3>
                     <div className="h-64 sm:h-80 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                                 <XAxis 
                                     dataKey="shortDate" 
                                     axisLine={false} 
                                     tickLine={false} 
                                     tick={{fontSize: 10, fill: '#9ca3af'}} 
-                                    minTickGap={20}
+                                    minTickGap={30}
                                 />
                                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#9ca3af'}} />
                                 <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
@@ -201,7 +201,7 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
         {/* WEIGHT TAB */}
         {activeTab === 'weight' && (
             <div className="space-y-6">
-                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm h-64 sm:h-80 w-full">
+                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm h-64 sm:h-80 w-full overflow-hidden">
                      <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={[...filteredWeights].reverse()}>
                             <defs>
@@ -216,7 +216,7 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
                                 axisLine={false} 
                                 tickLine={false} 
                                 tick={{fontSize: 10}} 
-                                minTickGap={30}
+                                minTickGap={40}
                             />
                             <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{fontSize: 10}} width={30} />
                             <Tooltip labelFormatter={(l) => new Date(l).toLocaleDateString()} contentStyle={{ borderRadius: '12px' }} />

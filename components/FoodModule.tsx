@@ -10,46 +10,49 @@ interface FoodModuleProps {
   onDeleteEntry: (id: string) => void;
 }
 
-// Utility to compress images
+// Optimized image compression to prevent memory crashes on mobile
 const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target?.result as string;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_DIM = 1024; // Limit max dimension
-                let width = img.width;
-                let height = img.height;
+        // Use createObjectURL to avoid reading the entire file into a base64 string first
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        img.src = objectUrl;
+        
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl); // Clean up immediately
+            const canvas = document.createElement('canvas');
+            // Reduce max dimension to 800px for safe localStorage usage (keeps entries < 500kb usually)
+            const MAX_DIM = 800; 
+            let width = img.width;
+            let height = img.height;
 
-                if (width > height) {
-                    if (width > MAX_DIM) {
-                        height *= MAX_DIM / width;
-                        width = MAX_DIM;
-                    }
-                } else {
-                    if (height > MAX_DIM) {
-                        width *= MAX_DIM / height;
-                        height = MAX_DIM;
-                    }
+            if (width > height) {
+                if (width > MAX_DIM) {
+                    height *= MAX_DIM / width;
+                    width = MAX_DIM;
                 }
+            } else {
+                if (height > MAX_DIM) {
+                    width *= MAX_DIM / height;
+                    height = MAX_DIM;
+                }
+            }
 
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    ctx.drawImage(img, 0, 0, width, height);
-                    // Compress to JPEG 0.6 quality
-                    resolve(canvas.toDataURL('image/jpeg', 0.6));
-                } else {
-                    resolve(event.target?.result as string);
-                }
-            };
-            img.onerror = (e) => reject(e);
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(img, 0, 0, width, height);
+                // Lower quality to 0.5 to keep file size small (JPEG)
+                resolve(canvas.toDataURL('image/jpeg', 0.5));
+            } else {
+                reject(new Error("Canvas context error"));
+            }
         };
-        reader.onerror = (e) => reject(e);
+        img.onerror = (e) => {
+            URL.revokeObjectURL(objectUrl);
+            reject(e);
+        };
     });
 };
 
@@ -82,11 +85,11 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
       try {
           const compressed = await compressImage(file);
           setPreviewUrl(compressed);
-          // Pass current description if any, though usually empty on first load
+          // Pass current description if any
           await handleAnalyze(compressed, description);
       } catch (error) {
-          console.error("Image Error", error);
-          alert("Error processing image. Please try again.");
+          console.error("Image Processing Error", error);
+          alert("Error processing image. Please try a smaller image or enter details manually.");
           setAnalyzing(false);
       }
     }
@@ -111,6 +114,7 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
       setHasAnalyzed(true);
 
     } catch (error) {
+      console.error("Analysis Error", error);
       alert("Failed to analyze food. You can enter details manually.");
     } finally {
       setAnalyzing(false);
@@ -120,16 +124,19 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
   const handleSaveEntry = () => {
     if (!description || !calories) return;
 
-    onAddEntry({
-        id: Date.now().toString(),
-        date: new Date().toISOString(),
-        name: description,
-        calories: parseInt(calories),
-        imageUrl: previewUrl || undefined,
-        type: "Logged"
-      });
-      
-      resetForm();
+    try {
+        onAddEntry({
+            id: Date.now().toString(),
+            date: new Date().toISOString(),
+            name: description,
+            calories: parseInt(calories),
+            imageUrl: previewUrl || undefined,
+            type: "Logged"
+        });
+        resetForm();
+    } catch (e) {
+        alert("Failed to save entry. Storage might be full.");
+    }
   };
 
   return (
