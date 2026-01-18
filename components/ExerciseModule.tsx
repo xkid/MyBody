@@ -1,17 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import { ExerciseEntry } from '../types';
-import { Plus, Timer, Flame, X, Footprints, Sparkles, ChevronLeft, Check } from 'lucide-react';
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { ExerciseEntry, UserProfile } from '../types';
+import { Plus, Timer, Flame, X, Footprints, Sparkles, ChevronLeft, Check, Bell, BellRing, Clock } from 'lucide-react';
 import { estimateExercise } from '../services/geminiService';
 
 interface ExerciseModuleProps {
   entries: ExerciseEntry[];
   onAddEntry: (e: ExerciseEntry) => void;
   onDeleteEntry: (id: string) => void;
+  userProfile: UserProfile;
+  onUpdateProfile: (p: UserProfile) => void;
 }
 
-export const ExerciseModule: React.FC<ExerciseModuleProps> = ({ entries, onAddEntry, onDeleteEntry }) => {
+export const ExerciseModule: React.FC<ExerciseModuleProps> = ({ 
+    entries, 
+    onAddEntry, 
+    onDeleteEntry,
+    userProfile,
+    onUpdateProfile
+}) => {
     const [isAdding, setIsAdding] = useState(false);
     const [isEstimating, setIsEstimating] = useState(false);
+    const [showReminderSettings, setShowReminderSettings] = useState(false);
     
     // Manual Activity Input State
     const [name, setName] = useState('');
@@ -20,6 +30,10 @@ export const ExerciseModule: React.FC<ExerciseModuleProps> = ({ entries, onAddEn
 
     // Quick Steps State
     const [dailyStepTotal, setDailyStepTotal] = useState('');
+
+    // Reminder State
+    const [reminderTime, setReminderTime] = useState(userProfile.exerciseReminderTime || '08:00');
+    const [reminderEnabled, setReminderEnabled] = useState(userProfile.exerciseReminderEnabled || false);
 
     // Calculate existing steps for today
     const stepsTodaySoFar = useMemo(() => {
@@ -94,6 +108,30 @@ export const ExerciseModule: React.FC<ExerciseModuleProps> = ({ entries, onAddEn
         setDailyStepTotal('');
     };
 
+    const handleSaveReminder = async () => {
+        if (reminderEnabled) {
+            if (!("Notification" in window)) {
+                alert("This browser does not support desktop notification");
+                return;
+            }
+            if (Notification.permission !== 'granted') {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    alert("Notification permission denied. We cannot send reminders.");
+                    setReminderEnabled(false);
+                    return;
+                }
+            }
+        }
+
+        onUpdateProfile({
+            ...userProfile,
+            exerciseReminderTime: reminderTime,
+            exerciseReminderEnabled: reminderEnabled
+        });
+        setShowReminderSettings(false);
+    };
+
     const resetForm = () => {
         setName('');
         setDuration('');
@@ -104,12 +142,20 @@ export const ExerciseModule: React.FC<ExerciseModuleProps> = ({ entries, onAddEn
         <div className="p-6 pb-32 space-y-6">
             <header className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-gray-900">Exercise</h1>
-                <button 
-                    onClick={() => setIsAdding(true)}
-                    className="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95"
-                >
-                    <Plus size={24} />
-                </button>
+                <div className="flex space-x-2">
+                    <button 
+                        onClick={() => setShowReminderSettings(true)}
+                        className={`p-2 rounded-full shadow-md transition-colors ${userProfile.exerciseReminderEnabled ? 'bg-indigo-100 text-indigo-600' : 'bg-white text-gray-400'}`}
+                    >
+                        {userProfile.exerciseReminderEnabled ? <BellRing size={24} /> : <Bell size={24} />}
+                    </button>
+                    <button 
+                        onClick={() => setIsAdding(true)}
+                        className="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95"
+                    >
+                        <Plus size={24} />
+                    </button>
+                </div>
             </header>
 
             {/* Steps Tracker Card */}
@@ -196,6 +242,56 @@ export const ExerciseModule: React.FC<ExerciseModuleProps> = ({ entries, onAddEn
                     ))
                 )}
             </div>
+
+            {/* Reminder Settings Modal */}
+            {showReminderSettings && (
+                <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="bg-indigo-100 p-3 rounded-full text-indigo-600">
+                                <BellRing size={24} />
+                            </div>
+                            <button onClick={() => setShowReminderSettings(false)} className="text-gray-400 hover:text-gray-600">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Daily Reminder</h3>
+                        <p className="text-sm text-gray-500 mb-6">Get notified to start your workout.</p>
+                        
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between bg-gray-50 p-4 rounded-xl">
+                                <span className="font-semibold text-gray-700">Enable Reminders</span>
+                                <button 
+                                    onClick={() => setReminderEnabled(!reminderEnabled)}
+                                    className={`w-12 h-7 rounded-full transition-colors relative ${reminderEnabled ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                                >
+                                    <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-transform ${reminderEnabled ? 'left-6' : 'left-1'}`} />
+                                </button>
+                            </div>
+
+                            <div className={`transition-opacity ${reminderEnabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Time</label>
+                                <div className="relative">
+                                    <input 
+                                        type="time" 
+                                        value={reminderTime}
+                                        onChange={(e) => setReminderTime(e.target.value)}
+                                        className="w-full p-4 bg-gray-50 rounded-xl font-bold text-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                    <Clock className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={handleSaveReminder}
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl mt-4"
+                            >
+                                Save Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Full Screen Add Activity Modal */}
             {isAdding && (

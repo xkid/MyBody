@@ -21,7 +21,7 @@ const INITIAL_PROFILE: UserProfile = {
 };
 
 // Application Version - Bump this to trigger the update modal
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
@@ -286,6 +286,35 @@ const App: React.FC = () => {
 
   if (statsHistory.length === 0) statsHistory.push(dashboardStats);
 
+  // Exercise Notification Logic
+  useEffect(() => {
+    if (!currentProfile.exerciseReminderEnabled || !currentProfile.exerciseReminderTime) return;
+
+    const checkReminder = () => {
+        const now = new Date();
+        const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        
+        if (currentTime === currentProfile.exerciseReminderTime) {
+             const lastNotified = localStorage.getItem(`last_exercise_notification_${currentProfile.id}`);
+             const todayStr = now.toDateString() + ':' + currentTime;
+             
+             // Ensure we only notify once per minute/day combo
+             if (lastNotified !== todayStr) {
+                 if ("Notification" in window && Notification.permission === "granted") {
+                     new Notification("GetFit Time!", {
+                         body: "It's time for your scheduled exercise routine! Let's get moving.",
+                         icon: "/icon.png"
+                     });
+                 }
+                 localStorage.setItem(`last_exercise_notification_${currentProfile.id}`, todayStr);
+             }
+        }
+    };
+
+    const interval = setInterval(checkReminder, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, [currentProfile]);
+
   // View Rendering
   const renderView = () => {
     if (!isInitialized) return <div className="flex h-screen items-center justify-center text-gray-400">Loading...</div>;
@@ -311,6 +340,8 @@ const App: React.FC = () => {
             entries={todayExercises} 
             onAddEntry={(e) => setExercises([...exercises, e])} 
             onDeleteEntry={handleDeleteExercise}
+            userProfile={currentProfile}
+            onUpdateProfile={handleUpdateProfile}
          />;
       case 'body':
         return <BodyModule 
@@ -375,10 +406,9 @@ const App: React.FC = () => {
                     <div className="space-y-3 text-gray-600 text-sm">
                         <p>Welcome to version {APP_VERSION}. Here is what's new:</p>
                         <ul className="list-disc pl-5 space-y-1">
-                            <li><span className="font-semibold">Enhanced Analytics:</span> View trends by Day, Week, or Month across all modules.</li>
-                            <li><span className="font-semibold">Visual Upgrades:</span> Interactive charts for Weight and Body measurements.</li>
-                            <li><span className="font-semibold">Calendar View:</span> Easily navigate history from the Dashboard.</li>
-                            <li><span className="font-semibold">Profile Info:</span> App version now visible in Settings.</li>
+                            <li><span className="font-semibold">Exercise Reminders:</span> Set a daily reminder to keep up with your routine.</li>
+                            <li><span className="font-semibold">Rebranding:</span> We are now GetFit! Same great features, new name.</li>
+                            <li>Enhanced performance and minor bug fixes.</li>
                         </ul>
                     </div>
                     <button 

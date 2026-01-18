@@ -53,7 +53,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `vitalsync_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `getfit_backup_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -236,7 +236,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
       {/* Version Footer */}
       <div className="text-center py-8">
-          <p className="text-xs text-gray-400 font-medium">VitalSync Health App</p>
+          <p className="text-xs text-gray-400 font-medium">GetFit</p>
           <p className="text-[10px] text-gray-300">Version {appVersion}</p>
       </div>
 

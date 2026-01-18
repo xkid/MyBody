@@ -1,5 +1,4 @@
 
-
 export interface WeightEntry {
   id: string;
   date: string; // ISO string
@@ -52,6 +51,8 @@ export interface UserProfile {
   age: number;
   heightCm: number;
   targetWeight?: number;
+  exerciseReminderTime?: string; // HH:MM
+  exerciseReminderEnabled?: boolean;
 }
 
 export type AppView = 'dashboard' | 'food' | 'exercise' | 'body' | 'stats' | 'settings' ;
