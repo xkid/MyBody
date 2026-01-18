@@ -22,7 +22,7 @@ const INITIAL_PROFILE: UserProfile = {
 };
 
 // Application Version - Bump this to trigger the update modal
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
@@ -125,7 +125,8 @@ const App: React.FC = () => {
       const lastVersion = localStorage.getItem('vs_app_version');
       if (lastVersion !== APP_VERSION) {
           setShowUpdateModal(true);
-          localStorage.setItem('vs_app_version', APP_VERSION);
+          // We intentionally do NOT set the version in localStorage here.
+          // It is set when the user acknowledges the modal to ensure they see it.
       }
 
     } catch (e) {
@@ -207,6 +208,11 @@ const App: React.FC = () => {
   const handleSwitchProfile = (id: string) => {
       setCurrentProfileId(id);
       setDashboardDate(new Date()); // Reset date on profile switch
+  };
+
+  const handleCloseUpdateModal = () => {
+      localStorage.setItem('vs_app_version', APP_VERSION);
+      setShowUpdateModal(false);
   };
 
   // Delete Handlers
@@ -432,13 +438,13 @@ const App: React.FC = () => {
         
         {/* Update Notification Modal */}
         {showUpdateModal && (
-            <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
+            <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
                 <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
                     <div className="flex justify-between items-start mb-4">
                         <div className="bg-blue-100 p-3 rounded-full text-blue-600">
                             <Info size={32} />
                         </div>
-                        <button onClick={() => setShowUpdateModal(false)} className="text-gray-400 hover:text-gray-600">
+                        <button onClick={handleCloseUpdateModal} className="text-gray-400 hover:text-gray-600">
                             <X size={24} />
                         </button>
                     </div>
@@ -446,13 +452,13 @@ const App: React.FC = () => {
                     <div className="space-y-3 text-gray-600 text-sm">
                         <p>Welcome to version {APP_VERSION}. Here is what's new:</p>
                         <ul className="list-disc pl-5 space-y-1">
-                            <li><span className="font-semibold">Enhanced Backup:</span> Smarter data import/export with version protection.</li>
-                            <li><span className="font-semibold">Exercise Reminders:</span> Improved notification permissions and reliability.</li>
-                            <li><span className="font-semibold">Performance:</span> Various bug fixes and stability improvements.</li>
+                            <li><span className="font-semibold">Enhanced Backup:</span> Smarter data import/export with file versioning and safety checks.</li>
+                            <li><span className="font-semibold">Exercise Reminders:</span> Fixed notification permissions and improved scheduling reliability.</li>
+                            <li><span className="font-semibold">Stability:</span> Smoother transitions and bug fixes for a better mobile experience.</li>
                         </ul>
                     </div>
                     <button 
-                        onClick={() => setShowUpdateModal(false)}
+                        onClick={handleCloseUpdateModal}
                         className="w-full mt-6 bg-gray-900 hover:bg-black text-white font-bold py-3 rounded-xl transition-colors"
                     >
                         Awesome!
