@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -188,8 +189,8 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
       return Array.from(map.values());
   }, [statsHistory, start, end]);
 
-  const foodChartData = useMemo(() => getAggregatedData(foods, 'calories', start, end, viewMode), [foods, start, end, viewMode]);
-  const exerciseChartData = useMemo(() => getAggregatedData(exercises, 'caloriesBurned', start, end, viewMode), [exercises, start, end, viewMode]);
+  const foodChartData = useMemo(() => getAggregatedData<FoodEntry>(foods, 'calories', start, end, viewMode), [foods, start, end, viewMode]);
+  const exerciseChartData = useMemo(() => getAggregatedData<ExerciseEntry>(exercises, 'caloriesBurned', start, end, viewMode), [exercises, start, end, viewMode]);
   
   // Weight Line Chart Data (Non-aggregated, just chronological points)
   const weightChartData = useMemo(() => {

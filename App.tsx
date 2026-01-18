@@ -22,7 +22,7 @@ const INITIAL_PROFILE: UserProfile = {
 };
 
 // Application Version - Bump this to trigger the update modal
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.4.0';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
@@ -446,9 +446,9 @@ const App: React.FC = () => {
                     <div className="space-y-3 text-gray-600 text-sm">
                         <p>Welcome to version {APP_VERSION}. Here is what's new:</p>
                         <ul className="list-disc pl-5 space-y-1">
-                            <li><span className="font-semibold">Flexible Reminders:</span> Add multiple exercise reminders for different days of the week!</li>
-                            <li><span className="font-semibold">Notifications:</span> Better controls for your daily alerts.</li>
-                            <li>Performance improvements.</li>
+                            <li><span className="font-semibold">Enhanced Backup:</span> Smarter data import/export with version protection.</li>
+                            <li><span className="font-semibold">Exercise Reminders:</span> Improved notification permissions and reliability.</li>
+                            <li><span className="font-semibold">Performance:</span> Various bug fixes and stability improvements.</li>
                         </ul>
                     </div>
                     <button 
