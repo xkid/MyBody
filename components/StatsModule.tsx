@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  ComposedChart, Line, Legend, AreaChart, Area
+  AreaChart, Area
 } from 'recharts';
 import { DailyStats, FoodEntry, ExerciseEntry, WeightEntry, MeasurementEntry } from '../types';
-import { Utensils, Dumbbell, Ruler, Scale, Calendar, List, X } from 'lucide-react';
+import { Utensils, Dumbbell, Ruler, Scale, Calendar, X } from 'lucide-react';
 
 interface StatsModuleProps {
   statsHistory: DailyStats[];
@@ -56,9 +57,8 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
     let filtered = sorted;
     
     if (period === 'daily') filtered = sorted.slice(-30);
-    else if (period === 'monthly') filtered = sorted.slice(-365); // Simplified
+    else if (period === 'monthly') filtered = sorted.slice(-365); 
     
-    // For annual/monthly aggregation, we might want to group, but keeping simple daily/all points for now
     return filtered.map(d => ({
         ...d,
         shortDate: new Date(d.date).toLocaleDateString('en-US', period === 'daily' ? { weekday: 'short', day: 'numeric'} : { month: 'short', year: '2-digit' }),
@@ -75,7 +75,7 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
   const TabButton = ({ id, label, icon: Icon }: { id: Tab, label: string, icon: any }) => (
       <button 
         onClick={() => setActiveTab(id)}
-        className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+        className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap flex-shrink-0 ${
             activeTab === id ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100'
         }`}
       >
@@ -85,7 +85,7 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
   );
 
   return (
-    <div className="p-6 pb-32 space-y-6">
+    <div className="p-6 pb-32 space-y-6 max-w-full overflow-x-hidden">
       <header>
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Trends & Data</h1>
         
@@ -104,8 +104,8 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
             ))}
         </div>
 
-        {/* Module Tabs */}
-        <div className="flex space-x-3 overflow-x-auto pb-2 no-scrollbar">
+        {/* Module Tabs - Scrollable */}
+        <div className="flex space-x-3 overflow-x-auto pb-2 no-scrollbar -mx-6 px-6">
             <TabButton id="overview" label="Overview" icon={Calendar} />
             <TabButton id="food" label="Food" icon={Utensils} />
             <TabButton id="exercise" label="Exercise" icon={Dumbbell} />
@@ -114,7 +114,7 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
         </div>
       </header>
 
-      <div className="animate-in fade-in slide-in-from-bottom-4">
+      <div className="animate-in fade-in slide-in-from-bottom-4 min-h-[300px]">
         
         {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
@@ -122,11 +122,17 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
                  {/* Calories Chart */}
                 <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
                     <h3 className="font-bold text-gray-900 mb-4">Calorie Balance</h3>
-                    <div className="h-64">
+                    <div className="h-64 sm:h-80 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                <XAxis dataKey="shortDate" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#9ca3af'}} />
+                                <XAxis 
+                                    dataKey="shortDate" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fontSize: 10, fill: '#9ca3af'}} 
+                                    minTickGap={20}
+                                />
                                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#9ca3af'}} />
                                 <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                                 <Bar dataKey="intake" name="Intake" fill="#4ade80" radius={[4, 4, 0, 0]} />
@@ -148,12 +154,12 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
                 <div className="space-y-3">
                     {filteredFoods.map(f => (
                         <div key={f.id} className="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center">
-                            <div>
-                                <p className="font-bold text-gray-900">{f.name}</p>
+                            <div className="min-w-0 flex-1 pr-2">
+                                <p className="font-bold text-gray-900 truncate">{f.name}</p>
                                 <p className="text-xs text-gray-500">{new Date(f.date).toLocaleDateString()} {new Date(f.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
                             </div>
-                            <div className="flex items-center space-x-3">
-                                <span className="font-bold text-green-600">{f.calories} kcal</span>
+                            <div className="flex items-center space-x-3 flex-shrink-0">
+                                <span className="font-bold text-green-600 whitespace-nowrap">{f.calories} kcal</span>
                                 <button onClick={() => onDeleteFood(f.id)} className="text-gray-300 hover:text-red-500 p-1">
                                     <X size={16} />
                                 </button>
@@ -172,14 +178,14 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
                 <div className="space-y-3">
                     {filteredExercises.map(e => (
                         <div key={e.id} className="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center">
-                            <div>
-                                <p className="font-bold text-gray-900">{e.name}</p>
+                            <div className="min-w-0 flex-1 pr-2">
+                                <p className="font-bold text-gray-900 truncate">{e.name}</p>
                                 <p className="text-xs text-gray-500">{new Date(e.date).toLocaleDateString()} • {e.durationMinutes} mins</p>
                             </div>
-                            <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-4 flex-shrink-0">
                                 <div className="text-right">
-                                    <span className="block font-bold text-orange-600">{e.caloriesBurned} kcal</span>
-                                    {e.steps && <span className="text-xs text-blue-500">{e.steps} steps</span>}
+                                    <span className="block font-bold text-orange-600 whitespace-nowrap">{e.caloriesBurned} kcal</span>
+                                    {e.steps && <span className="text-xs text-blue-500 whitespace-nowrap">{e.steps} steps</span>}
                                 </div>
                                 <button onClick={() => onDeleteExercise(e.id)} className="text-gray-300 hover:text-red-500 p-1">
                                     <X size={16} />
@@ -195,7 +201,7 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
         {/* WEIGHT TAB */}
         {activeTab === 'weight' && (
             <div className="space-y-6">
-                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm h-64">
+                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm h-64 sm:h-80 w-full">
                      <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={[...filteredWeights].reverse()}>
                             <defs>
@@ -204,8 +210,15 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
                                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
-                            <XAxis dataKey="date" tickFormatter={(t) => new Date(t).toLocaleDateString(undefined, {month:'short', day:'numeric'})} axisLine={false} tickLine={false} tick={{fontSize: 10}} />
-                            <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                            <XAxis 
+                                dataKey="date" 
+                                tickFormatter={(t) => new Date(t).toLocaleDateString(undefined, {month:'short', day:'numeric'})} 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{fontSize: 10}} 
+                                minTickGap={30}
+                            />
+                            <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{fontSize: 10}} width={30} />
                             <Tooltip labelFormatter={(l) => new Date(l).toLocaleDateString()} contentStyle={{ borderRadius: '12px' }} />
                             <Area type="monotone" dataKey="weight" stroke="#3b82f6" fillOpacity={1} fill="url(#colorWeight)" strokeWidth={3} />
                         </AreaChart>

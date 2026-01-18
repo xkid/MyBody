@@ -1,5 +1,6 @@
+
 import React, { useState, useRef } from 'react';
-import { Camera, Plus, Loader2, Search, X, Type, Check, ChevronLeft, Sparkles } from 'lucide-react';
+import { Camera, Plus, Loader2, Search, X, Type, Check, ChevronLeft, Sparkles, RefreshCw } from 'lucide-react';
 import { FoodEntry } from '../types';
 import { analyzeFood } from '../services/geminiService';
 
@@ -8,6 +9,49 @@ interface FoodModuleProps {
   onAddEntry: (entry: FoodEntry) => void;
   onDeleteEntry: (id: string) => void;
 }
+
+// Utility to compress images
+const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_DIM = 1024; // Limit max dimension
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_DIM) {
+                        height *= MAX_DIM / width;
+                        width = MAX_DIM;
+                    }
+                } else {
+                    if (height > MAX_DIM) {
+                        width *= MAX_DIM / height;
+                        height = MAX_DIM;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0, width, height);
+                    // Compress to JPEG 0.6 quality
+                    resolve(canvas.toDataURL('image/jpeg', 0.6));
+                } else {
+                    resolve(event.target?.result as string);
+                }
+            };
+            img.onerror = (e) => reject(e);
+        };
+        reader.onerror = (e) => reject(e);
+    });
+};
 
 export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onDeleteEntry }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -34,14 +78,17 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setPreviewUrl(result);
-        // Auto-analyze immediately upon photo selection
-        handleAnalyze(result, '');
-      };
-      reader.readAsDataURL(file);
+      setAnalyzing(true);
+      try {
+          const compressed = await compressImage(file);
+          setPreviewUrl(compressed);
+          // Pass current description if any, though usually empty on first load
+          await handleAnalyze(compressed, description);
+      } catch (error) {
+          console.error("Image Error", error);
+          alert("Error processing image. Please try again.");
+          setAnalyzing(false);
+      }
     }
   };
 
@@ -58,7 +105,7 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
       // Analyze using AI
       const result = await analyzeFood(base64Data, textData);
       
-      // Pre-populate fields for user editing
+      // Update fields
       setDescription(result.foodName);
       setCalories(result.calories.toString());
       setHasAnalyzed(true);
@@ -116,12 +163,12 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                    </div>
                  )}
                </div>
-               <div className="flex-1">
-                 <h3 className="font-bold text-gray-900">{entry.name}</h3>
+               <div className="flex-1 min-w-0">
+                 <h3 className="font-bold text-gray-900 truncate">{entry.name}</h3>
                  <p className="text-xs text-gray-500">{new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                </div>
                <div className="flex flex-col items-end">
-                  <span className="font-bold text-gray-900">{entry.calories} kcal</span>
+                  <span className="font-bold text-gray-900 whitespace-nowrap">{entry.calories} kcal</span>
                   <button onClick={() => onDeleteEntry(entry.id)} className="text-red-400 p-1 hover:text-red-600">
                     <X size={16} />
                   </button>
@@ -149,7 +196,7 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
               {/* Image Section */}
               <div className="relative">
                 <div 
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => !analyzing && fileInputRef.current?.click()}
                     className={`w-full aspect-square sm:aspect-video rounded-3xl overflow-hidden flex flex-col items-center justify-center cursor-pointer transition-all ${previewUrl ? 'bg-black' : 'bg-gray-50 border-2 border-dashed border-gray-300 hover:bg-gray-50'}`}
                 >
                     {previewUrl ? (
@@ -165,7 +212,7 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                     )}
                     
                     {analyzing && (
-                        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white backdrop-blur-sm">
+                        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white backdrop-blur-sm z-20">
                             <Loader2 className="animate-spin mb-2" size={40} />
                             <p className="font-bold">Analyzing...</p>
                         </div>
@@ -181,30 +228,18 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                 />
               </div>
 
-              {/* Divider if no image */}
-              {!previewUrl && (
-                <div className="relative py-2">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-200"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="px-3 bg-white text-gray-500 font-medium">Or describe manually</span>
-                    </div>
-                </div>
-              )}
-
               {/* Manual Input / Editing Section */}
               <div className="space-y-4">
                   <div>
                       <label className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1 block">
-                          {previewUrl ? 'Food Name' : 'Food Description'}
+                          {previewUrl ? 'Identified Item' : 'Food Description'}
                       </label>
                       <div className="relative">
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder={previewUrl ? "Identified Food Name" : "e.g. A grilled chicken sandwich and a cup of coffee"}
-                            className={`w-full text-lg font-medium placeholder:font-normal p-4 bg-gray-50 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none ${previewUrl ? 'h-16' : 'h-32'}`}
+                            placeholder={previewUrl ? "Checking image..." : "e.g. A grilled chicken sandwich and a cup of coffee"}
+                            className={`w-full text-lg font-medium placeholder:font-normal p-4 bg-gray-50 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none ${previewUrl ? 'h-24' : 'h-32'}`}
                         />
                         
                         {/* AI Trigger for Text Only */}
@@ -215,7 +250,18 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                                 className="absolute right-3 bottom-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
                              >
                                 {analyzing ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                                <span>Estimate Calories</span>
+                                <span>Estimate</span>
+                             </button>
+                        )}
+
+                        {/* AI Refine Button for Image */}
+                        {previewUrl && !analyzing && (
+                             <button 
+                                onClick={() => handleAnalyze(previewUrl, description)}
+                                className="absolute right-3 bottom-3 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md hover:bg-black transition-all flex items-center space-x-1"
+                             >
+                                <RefreshCw size={12} />
+                                <span>Refine with AI</span>
                              </button>
                         )}
                       </div>
