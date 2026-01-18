@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { UserProfile } from '../types';
 import { User, Plus, Check, Database, Download, Upload, Trash2, AlertTriangle } from 'lucide-react';
@@ -8,6 +9,7 @@ interface ProfileSettingsProps {
   onUpdateProfile: (p: UserProfile) => void;
   onSwitchProfile: (id: string) => void;
   onAddProfile: () => void;
+  appVersion: string;
 }
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ 
@@ -15,7 +17,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   allProfiles, 
   onUpdateProfile,
   onSwitchProfile,
-  onAddProfile
+  onAddProfile,
+  appVersion
 }) => {
   const [formData, setFormData] = useState<UserProfile>(currentProfile);
   const [resetCode, setResetCode] = useState<string>('');
@@ -229,6 +232,12 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                 <span>Reset All Data</span>
             </button>
         </div>
+      </div>
+
+      {/* Version Footer */}
+      <div className="text-center py-8">
+          <p className="text-xs text-gray-400 font-medium">VitalSync Health App</p>
+          <p className="text-[10px] text-gray-300">Version {appVersion}</p>
       </div>
 
       {/* Reset Confirmation Modal */}

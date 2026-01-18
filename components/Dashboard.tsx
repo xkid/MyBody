@@ -1,6 +1,7 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { UserProfile, DailyStats } from '../types';
-import { Activity, Flame, Utensils, TrendingUp, Settings, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Activity, Flame, Utensils, TrendingUp, Settings, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
 
 interface DashboardProps {
   profile: UserProfile;
@@ -19,6 +20,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   currentDate,
   onDateChange
 }) => {
+  const [showCalendar, setShowCalendar] = useState(false);
   const caloriesRemaining = stats.net; 
   // We will assume 'stats.bmr' is the base burn.
   const totalBurned = stats.bmr + stats.burned;
@@ -41,10 +43,50 @@ export const Dashboard: React.FC<DashboardProps> = ({
     d.setDate(d.getDate() + 1);
     onDateChange(d);
   };
+
+  // Calendar Logic
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+
+  const renderCalendar = () => {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const daysInMonth = getDaysInMonth(year, month);
+      const firstDay = getFirstDayOfMonth(year, month);
+      const days = [];
+
+      // Empty slots for previous month
+      for (let i = 0; i < firstDay; i++) {
+          days.push(<div key={`empty-${i}`} className="h-8"></div>);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+          const isSelected = d === currentDate.getDate();
+          const isTodayDate = new Date().getDate() === d && new Date().getMonth() === month && new Date().getFullYear() === year;
+          days.push(
+              <button 
+                key={d}
+                onClick={() => {
+                    const newDate = new Date(currentDate);
+                    newDate.setDate(d);
+                    onDateChange(newDate);
+                    setShowCalendar(false);
+                }}
+                className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors
+                    ${isSelected ? 'bg-blue-600 text-white shadow-md' : 'text-gray-700 hover:bg-gray-100'}
+                    ${isTodayDate && !isSelected ? 'border border-blue-600 text-blue-600' : ''}
+                `}
+              >
+                  {d}
+              </button>
+          );
+      }
+      return days;
+  };
   
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <header className="flex justify-between items-center">
+    <div className="p-6 space-y-6 animate-in fade-in duration-500 relative">
+      <header className="flex justify-between items-center relative z-20">
         <div>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Summary</h2>
           <div className="flex items-center space-x-1 mt-1 -ml-2">
@@ -54,9 +96,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
             >
                 <ChevronLeft size={28} />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 min-w-[120px] text-center">
-                {isToday ? "Today" : currentDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-            </h1>
+            
+            <button 
+                onClick={() => setShowCalendar(!showCalendar)}
+                className="flex items-center justify-center space-x-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+                <h1 className="text-3xl font-bold text-gray-900 min-w-[100px] text-center">
+                    {isToday ? "Today" : currentDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                </h1>
+                <CalendarIcon size={16} className="text-gray-400" />
+            </button>
+
             <button 
                 onClick={handleNextDay} 
                 disabled={isToday}
@@ -76,6 +126,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
            </button>
         </div>
       </header>
+
+      {/* Calendar Dropdown */}
+      {showCalendar && (
+          <div className="absolute top-20 left-6 right-6 bg-white rounded-3xl shadow-xl border border-gray-100 z-50 p-4 animate-in slide-in-from-top-5">
+              <div className="flex justify-between items-center mb-4">
+                  <span className="font-bold text-gray-900 text-lg">{currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                  <button onClick={() => setShowCalendar(false)} className="p-1 text-gray-400 hover:text-gray-600"><X size={20}/></button>
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                  {['S','M','T','W','T','F','S'].map(d => <span key={d} className="text-xs font-bold text-gray-400">{d}</span>)}
+              </div>
+              <div className="grid grid-cols-7 gap-1 place-items-center">
+                  {renderCalendar()}
+              </div>
+          </div>
+      )}
 
       {/* Main Card */}
       <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-6 border border-gray-100 relative overflow-hidden">

@@ -21,7 +21,7 @@ const INITIAL_PROFILE: UserProfile = {
 };
 
 // Application Version - Bump this to trigger the update modal
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
@@ -341,6 +341,7 @@ const App: React.FC = () => {
             onUpdateProfile={handleUpdateProfile}
             onSwitchProfile={handleSwitchProfile}
             onAddProfile={handleAddProfile}
+            appVersion={APP_VERSION}
         />;
       default:
         return <Dashboard 
@@ -374,8 +375,10 @@ const App: React.FC = () => {
                     <div className="space-y-3 text-gray-600 text-sm">
                         <p>Welcome to version {APP_VERSION}. Here is what's new:</p>
                         <ul className="list-disc pl-5 space-y-1">
-                            <li><span className="font-semibold">Gallery Uploads:</span> You can now upload existing food photos from your device gallery!</li>
-                            <li>Performance improvements and bug fixes.</li>
+                            <li><span className="font-semibold">Enhanced Analytics:</span> View trends by Day, Week, or Month across all modules.</li>
+                            <li><span className="font-semibold">Visual Upgrades:</span> Interactive charts for Weight and Body measurements.</li>
+                            <li><span className="font-semibold">Calendar View:</span> Easily navigate history from the Dashboard.</li>
+                            <li><span className="font-semibold">Profile Info:</span> App version now visible in Settings.</li>
                         </ul>
                     </div>
                     <button 
