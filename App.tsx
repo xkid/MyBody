@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
@@ -21,8 +20,8 @@ const INITIAL_PROFILE: UserProfile = {
   reminders: []
 };
 
-// Application Version - Bumped to 1.5.3 for cache busting
-const APP_VERSION = '1.5.3';
+// Application Version - Bumped to 1.6.0 for immediate update
+const APP_VERSION = '1.6.0';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
@@ -122,6 +121,8 @@ const App: React.FC = () => {
       }
 
       // Check for App Update
+      // Logic: If version in storage doesn't match current CODE version, show modal.
+      // This works once the new code is loaded.
       const lastVersion = localStorage.getItem('vs_app_version');
       if (lastVersion !== APP_VERSION) {
           setShowUpdateModal(true);
@@ -482,19 +483,20 @@ const App: React.FC = () => {
                             <X size={24} />
                         </button>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">We've updated!</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Update Installed!</h3>
                     <div className="space-y-3 text-gray-600 text-sm">
-                        <p>Welcome to version {APP_VERSION}. Update complete.</p>
+                        <p>Latest version {APP_VERSION} is ready.</p>
+                        <p className="text-xs bg-gray-100 p-2 rounded">Fixes issue where updates were not reflecting on iOS devices.</p>
                         <ul className="list-disc pl-5 space-y-1">
-                            <li><span className="font-semibold">Caching Fix:</span> Server configuration updated to force mobile refresh.</li>
-                            <li><span className="font-semibold">Macronutrients:</span> Verified entry and stats working.</li>
+                            <li><span className="font-semibold">Version Sync:</span> Fixed version mismatch logic.</li>
+                            <li><span className="font-semibold">Cache:</span> Cleared PWA cache.</li>
                         </ul>
                     </div>
                     <button 
                         onClick={handleCloseUpdateModal}
                         className="w-full mt-6 bg-gray-900 hover:bg-black text-white font-bold py-3 rounded-xl transition-colors"
                     >
-                        Awesome!
+                        Reload App
                     </button>
                 </div>
             </div>

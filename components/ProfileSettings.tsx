@@ -1,7 +1,6 @@
-
 import React, { useState, useRef } from 'react';
 import { UserProfile } from '../types';
-import { User, Plus, Check, Database, Download, Upload, Trash2, AlertTriangle, FileJson } from 'lucide-react';
+import { User, Plus, Check, Database, Download, Upload, Trash2, AlertTriangle, FileJson, RefreshCw } from 'lucide-react';
 
 interface ProfileSettingsProps {
   currentProfile: UserProfile;
@@ -256,11 +255,23 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             <Database size={24} className="text-gray-500" />
             <div>
                 <h2 className="text-xl font-bold">Data Management</h2>
-                <p className="text-xs text-gray-500">Backup and restore your health data.</p>
+                <p className="text-xs text-gray-500">Backup, restore, or refresh application.</p>
             </div>
         </div>
         
         <div className="grid grid-cols-1 gap-3">
+             <button 
+                onClick={() => {
+                  if(confirm("This will reload the page to fetch the latest version. Unsaved changes might be lost.")) {
+                    window.location.reload();
+                  }
+                }}
+                className="w-full bg-green-50 border border-green-100 hover:bg-green-100 text-green-700 font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-colors"
+            >
+                <RefreshCw size={20} />
+                <span>Force Update / Reload App</span>
+            </button>
+
             <button 
                 onClick={handleExport}
                 className="w-full bg-blue-50 border border-blue-100 hover:bg-blue-100 text-blue-700 font-semibold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-colors"
@@ -292,7 +303,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       <div className="text-center py-8">
           <div className="flex justify-center items-center space-x-2 text-gray-300 mb-1">
               <FileJson size={14} />
-              <span className="text-xs font-mono">{appVersion}</span>
+              <span className="text-xs font-mono">App Version: {appVersion}</span>
           </div>
           <p className="text-[10px] text-gray-300">GetFit Health Tracker</p>
       </div>
