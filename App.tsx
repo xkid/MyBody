@@ -21,8 +21,8 @@ const INITIAL_PROFILE: UserProfile = {
   reminders: []
 };
 
-// Application Version - Bump this to trigger the update modal
-const APP_VERSION = '1.5.0';
+// Application Version - Bumped to 1.5.3 for cache busting
+const APP_VERSION = '1.5.3';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
@@ -125,8 +125,6 @@ const App: React.FC = () => {
       const lastVersion = localStorage.getItem('vs_app_version');
       if (lastVersion !== APP_VERSION) {
           setShowUpdateModal(true);
-          // We intentionally do NOT set the version in localStorage here.
-          // It is set when the user acknowledges the modal to ensure they see it.
       }
 
     } catch (e) {
@@ -213,6 +211,8 @@ const App: React.FC = () => {
   const handleCloseUpdateModal = () => {
       localStorage.setItem('vs_app_version', APP_VERSION);
       setShowUpdateModal(false);
+      // Force reload the page to ensure the latest mobile code is loaded
+      window.location.reload();
   };
 
   // Delete Handlers
@@ -484,11 +484,10 @@ const App: React.FC = () => {
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 mb-2">We've updated!</h3>
                     <div className="space-y-3 text-gray-600 text-sm">
-                        <p>Welcome to version {APP_VERSION}. What's new:</p>
+                        <p>Welcome to version {APP_VERSION}. Update complete.</p>
                         <ul className="list-disc pl-5 space-y-1">
-                            <li><span className="font-semibold">Macronutrients:</span> Track Protein, Carbs, and Fat in your food logs.</li>
-                            <li><span className="font-semibold">AI Breakdown:</span> Food scans now automatically estimate macros.</li>
-                            <li><span className="font-semibold">Macro Stats:</span> View your nutrient breakdown in the Stats tab.</li>
+                            <li><span className="font-semibold">Caching Fix:</span> Server configuration updated to force mobile refresh.</li>
+                            <li><span className="font-semibold">Macronutrients:</span> Verified entry and stats working.</li>
                         </ul>
                     </div>
                     <button 
