@@ -1,6 +1,6 @@
 
-import React, { useState, useRef } from 'react';
-import { Camera, Plus, Loader2, Search, X, Type, Check, ChevronLeft, Sparkles, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Camera, Plus, Loader2, Search, X, Type, Check, ChevronLeft, Sparkles, RefreshCw, Image as ImageIcon, PieChart } from 'lucide-react';
 import { FoodEntry } from '../types';
 import { analyzeFood } from '../services/geminiService';
 
@@ -13,15 +13,13 @@ interface FoodModuleProps {
 // Optimized image compression to prevent memory crashes on mobile
 const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
-        // Use createObjectURL to avoid reading the entire file into a base64 string first
         const objectUrl = URL.createObjectURL(file);
         const img = new Image();
         img.src = objectUrl;
         
         img.onload = () => {
-            URL.revokeObjectURL(objectUrl); // Clean up immediately
+            URL.revokeObjectURL(objectUrl); 
             const canvas = document.createElement('canvas');
-            // Reduce max dimension to 800px for safe localStorage usage (keeps entries < 500kb usually)
             const MAX_DIM = 800; 
             let width = img.width;
             let height = img.height;
@@ -43,7 +41,6 @@ const compressImage = (file: File): Promise<string> => {
             const ctx = canvas.getContext('2d');
             if (ctx) {
                 ctx.drawImage(img, 0, 0, width, height);
-                // Lower quality to 0.5 to keep file size small (JPEG)
                 resolve(canvas.toDataURL('image/jpeg', 0.5));
             } else {
                 reject(new Error("Canvas context error"));
@@ -63,9 +60,13 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
   // Form State
   const [description, setDescription] = useState('');
   const [calories, setCalories] = useState<string>('');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
-  // UI State
+  // Macro States
+  const [protein, setProtein] = useState<string>('');
+  const [carbs, setCarbs] = useState<string>('');
+  const [fat, setFat] = useState<string>('');
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -74,10 +75,27 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
   const resetForm = () => {
     setDescription('');
     setCalories('');
+    setProtein('');
+    setCarbs('');
+    setFat('');
     setPreviewUrl(null);
     setHasAnalyzed(false);
     setIsAdding(false);
   };
+
+  // Auto-calculate calories based on macros
+  useEffect(() => {
+      // Only auto-calc if we have at least one macro entered
+      if (protein || carbs || fat) {
+          const p = parseFloat(protein) || 0;
+          const c = parseFloat(carbs) || 0;
+          const f = parseFloat(fat) || 0;
+          const estimatedCals = Math.round((p * 4) + (c * 4) + (f * 9));
+          if (estimatedCals > 0) {
+              setCalories(estimatedCals.toString());
+          }
+      }
+  }, [protein, carbs, fat]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -86,7 +104,6 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
       try {
           const compressed = await compressImage(file);
           setPreviewUrl(compressed);
-          // Pass current description if any
           await handleAnalyze(compressed, description);
       } catch (error) {
           console.error("Image Processing Error", error);
@@ -94,7 +111,6 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
           setAnalyzing(false);
       }
     }
-    // Reset input value to allow selecting the same file again if needed
     e.target.value = '';
   };
 
@@ -108,12 +124,14 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
         base64Data = imgData.split(',')[1];
       }
 
-      // Analyze using AI
       const result = await analyzeFood(base64Data, textData);
       
-      // Update fields
       setDescription(result.foodName);
       setCalories(result.calories.toString());
+      setProtein(result.macros.protein.toString());
+      setCarbs(result.macros.carbs.toString());
+      setFat(result.macros.fat.toString());
+      
       setHasAnalyzed(true);
 
     } catch (error) {
@@ -128,11 +146,18 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
     if (!description || !calories) return;
 
     try {
+        const macros = (protein || carbs || fat) ? {
+            protein: parseFloat(protein) || 0,
+            carbs: parseFloat(carbs) || 0,
+            fat: parseFloat(fat) || 0
+        } : undefined;
+
         onAddEntry({
             id: Date.now().toString(),
             date: new Date().toISOString(),
             name: description,
             calories: parseInt(calories),
+            macros: macros,
             imageUrl: previewUrl || undefined,
             type: "Logged"
         });
@@ -163,28 +188,38 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
           </div>
         ) : (
           entries.map(entry => (
-            <div key={entry.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
-               <div className="h-16 w-16 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
-                 {entry.imageUrl ? (
-                   <img src={entry.imageUrl} alt={entry.name} className="h-full w-full object-cover" />
-                 ) : (
-                   <div className="h-full w-full flex items-center justify-center bg-blue-50 text-blue-300">
-                     <UtensilsIcon size={24} />
-                   </div>
-                 )}
-               </div>
-               <div className="flex-1 min-w-0">
-                 <h3 className="font-bold text-gray-900 truncate">{entry.name}</h3>
-                 <p className="text-xs text-gray-500">
-                    {new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, {new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                 </p>
-               </div>
-               <div className="flex flex-col items-end">
-                  <span className="font-bold text-gray-900 whitespace-nowrap">{entry.calories} kcal</span>
-                  <button onClick={() => onDeleteEntry(entry.id)} className="text-red-400 p-1 hover:text-red-600">
-                    <X size={16} />
-                  </button>
-               </div>
+            <div key={entry.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                <div className="flex items-center space-x-4">
+                    <div className="h-16 w-16 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
+                        {entry.imageUrl ? (
+                        <img src={entry.imageUrl} alt={entry.name} className="h-full w-full object-cover" />
+                        ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-blue-50 text-blue-300">
+                            <UtensilsIcon size={24} />
+                        </div>
+                        )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-gray-900 truncate">{entry.name}</h3>
+                        <p className="text-xs text-gray-500">
+                            {new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, {new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </p>
+                        {/* Macro Badges in List */}
+                        {entry.macros && (
+                            <div className="flex space-x-2 mt-1">
+                                <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-medium">P: {entry.macros.protein}g</span>
+                                <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium">C: {entry.macros.carbs}g</span>
+                                <span className="text-[10px] bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded font-medium">F: {entry.macros.fat}g</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex flex-col items-end">
+                        <span className="font-bold text-gray-900 whitespace-nowrap">{entry.calories} kcal</span>
+                        <button onClick={() => onDeleteEntry(entry.id)} className="text-red-400 p-1 hover:text-red-600 mt-1">
+                            <X size={16} />
+                        </button>
+                    </div>
+                </div>
             </div>
           ))
         )}
@@ -200,7 +235,7 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                 <ChevronLeft size={24} />
               </button>
               <h2 className="text-lg font-bold">Add Meal</h2>
-              <div className="w-10"></div> {/* Spacer */}
+              <div className="w-10"></div> 
            </div>
 
            <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -242,7 +277,7 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                                 </div>
                             )}
                             <p className="font-bold text-gray-900 text-lg">Add Food Photo</p>
-                            <p className="text-sm text-gray-500 mt-1">AI will identify food & calories</p>
+                            <p className="text-sm text-gray-500 mt-1">AI will identify food, calories & macros</p>
                         </div>
                     )}
                     
@@ -254,7 +289,6 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                     )}
                 </div>
                 
-                {/* Hidden Inputs */}
                 <input 
                     type="file" 
                     accept="image/*" 
@@ -272,47 +306,84 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                 />
               </div>
 
-              {/* Manual Input / Editing Section */}
-              <div className="space-y-4">
-                  <div>
-                      <label className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1 block">
-                          {previewUrl ? 'Identified Item' : 'Food Description'}
-                      </label>
-                      <div className="relative">
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder={previewUrl ? "Checking image..." : "e.g. A grilled chicken sandwich and a cup of coffee"}
-                            className={`w-full text-lg font-medium placeholder:font-normal p-4 bg-gray-50 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none ${previewUrl ? 'h-24' : 'h-32'}`}
-                        />
-                        
-                        {/* AI Trigger for Text Only */}
-                        {!previewUrl && description.length > 2 && !hasAnalyzed && (
-                             <button 
-                                onClick={() => handleAnalyze(null, description)}
-                                disabled={analyzing}
-                                className="absolute right-3 bottom-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                             >
-                                {analyzing ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                                <span>Estimate</span>
-                             </button>
-                        )}
+              {/* Description Input */}
+              <div>
+                  <label className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1 block">
+                      {previewUrl ? 'Identified Item' : 'Food Description'}
+                  </label>
+                  <div className="relative">
+                    <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder={previewUrl ? "Checking image..." : "e.g. A grilled chicken sandwich and a cup of coffee"}
+                        className={`w-full text-lg font-medium placeholder:font-normal p-4 bg-gray-50 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none ${previewUrl ? 'h-24' : 'h-32'}`}
+                    />
+                    
+                    {!previewUrl && description.length > 2 && !hasAnalyzed && (
+                            <button 
+                            onClick={() => handleAnalyze(null, description)}
+                            disabled={analyzing}
+                            className="absolute right-3 bottom-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                            >
+                            {analyzing ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                            <span>Estimate</span>
+                            </button>
+                    )}
 
-                        {/* AI Refine Button for Image */}
-                        {previewUrl && !analyzing && (
-                             <button 
-                                onClick={() => handleAnalyze(previewUrl, description)}
-                                className="absolute right-3 bottom-3 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md hover:bg-black transition-all flex items-center space-x-1"
-                             >
-                                <RefreshCw size={12} />
-                                <span>Refine with AI</span>
-                             </button>
-                        )}
+                    {previewUrl && !analyzing && (
+                            <button 
+                            onClick={() => handleAnalyze(previewUrl, description)}
+                            className="absolute right-3 bottom-3 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md hover:bg-black transition-all flex items-center space-x-1"
+                            >
+                            <RefreshCw size={12} />
+                            <span>Refine with AI</span>
+                            </button>
+                    )}
+                  </div>
+              </div>
+
+              {/* Macros & Calories Section */}
+              <div>
+                  <div className="flex items-center space-x-2 mb-2">
+                      <PieChart size={16} className="text-gray-400"/>
+                      <label className="text-sm font-bold text-gray-500 uppercase tracking-wide">Macronutrients (Optional)</label>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="bg-purple-50 p-3 rounded-2xl border border-purple-100">
+                          <label className="text-[10px] font-bold text-purple-700 uppercase block mb-1">Protein (g)</label>
+                          <input 
+                              type="number" 
+                              value={protein}
+                              onChange={e => setProtein(e.target.value)}
+                              placeholder="0"
+                              className="w-full bg-transparent text-lg font-bold text-purple-900 outline-none"
+                          />
+                      </div>
+                      <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100">
+                          <label className="text-[10px] font-bold text-blue-700 uppercase block mb-1">Carbs (g)</label>
+                          <input 
+                              type="number" 
+                              value={carbs}
+                              onChange={e => setCarbs(e.target.value)}
+                              placeholder="0"
+                              className="w-full bg-transparent text-lg font-bold text-blue-900 outline-none"
+                          />
+                      </div>
+                      <div className="bg-orange-50 p-3 rounded-2xl border border-orange-100">
+                          <label className="text-[10px] font-bold text-orange-700 uppercase block mb-1">Fat (g)</label>
+                          <input 
+                              type="number" 
+                              value={fat}
+                              onChange={e => setFat(e.target.value)}
+                              placeholder="0"
+                              className="w-full bg-transparent text-lg font-bold text-orange-900 outline-none"
+                          />
                       </div>
                   </div>
 
                   <div>
-                      <label className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1 block">Calories (kcal)</label>
+                      <label className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1 block">Total Calories</label>
                       <input
                           type="number"
                           value={calories}
@@ -320,6 +391,9 @@ export const FoodModule: React.FC<FoodModuleProps> = ({ entries, onAddEntry, onD
                           placeholder="0"
                           className="w-full text-xl font-semibold placeholder:font-normal p-4 bg-gray-50 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                       />
+                      <p className="text-xs text-gray-400 mt-2 px-1">
+                          Calculated automatically from macros if entered (4 kcal/g protein & carbs, 9 kcal/g fat).
+                      </p>
                   </div>
               </div>
            </div>

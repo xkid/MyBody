@@ -5,6 +5,11 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 export interface AnalyzedFood {
   foodName: string;
   calories: number;
+  macros: {
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
   confidence: string;
   servingSize?: string;
 }
@@ -17,7 +22,7 @@ export const analyzeFood = async (
   
   const promptText = `
     Analyze this food item.
-    Identify the food item and estimate the total calories.
+    Identify the food item and estimate the total calories AND macronutrients (protein, carbs, fat in grams).
     If the food is packaged or looks like a specific brand/restaurant item, use the search tool to find accurate nutritional information.
     ${userDescription ? `\nThe user provided this description: "${userDescription}". Use this to refine your search and estimation.` : ''}
   `;
@@ -49,10 +54,19 @@ export const analyzeFood = async (
                 properties: {
                     foodName: { type: Type.STRING },
                     calories: { type: Type.NUMBER },
+                    macros: {
+                        type: Type.OBJECT,
+                        properties: {
+                            protein: { type: Type.NUMBER },
+                            carbs: { type: Type.NUMBER },
+                            fat: { type: Type.NUMBER }
+                        },
+                        required: ["protein", "carbs", "fat"]
+                    },
                     confidence: { type: Type.STRING, enum: ["high", "medium", "low"] },
                     servingSize: { type: Type.STRING }
                 },
-                required: ["foodName", "calories", "confidence"]
+                required: ["foodName", "calories", "macros", "confidence"]
             }
         }
     });
@@ -66,6 +80,7 @@ export const analyzeFood = async (
       return {
         foodName: userDescription || "Unknown Food",
         calories: 0,
+        macros: { protein: 0, carbs: 0, fat: 0 },
         confidence: "low",
         servingSize: "Unknown"
       };

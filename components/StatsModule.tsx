@@ -5,7 +5,7 @@ import {
   AreaChart, Area, LineChart, Line, Legend
 } from 'recharts';
 import { DailyStats, FoodEntry, ExerciseEntry, WeightEntry, MeasurementEntry } from '../types';
-import { Utensils, Dumbbell, Ruler, Scale, Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Utensils, Dumbbell, Ruler, Scale, Calendar, X, ChevronLeft, ChevronRight, PieChart } from 'lucide-react';
 
 interface StatsModuleProps {
   statsHistory: DailyStats[];
@@ -19,7 +19,7 @@ interface StatsModuleProps {
   onDeleteMeasurement: (id: string) => void;
 }
 
-type Tab = 'overview' | 'food' | 'exercise' | 'weight' | 'body';
+type Tab = 'overview' | 'food' | 'macros' | 'exercise' | 'weight' | 'body';
 type ViewMode = 'day' | 'week' | 'month';
 
 // Helpers moved outside component to ensure correct type inference
@@ -190,6 +190,36 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
   }, [statsHistory, start, end]);
 
   const foodChartData = useMemo(() => getAggregatedData<FoodEntry>(foods, 'calories', start, end, viewMode), [foods, start, end, viewMode]);
+  
+  const macroChartData = useMemo(() => {
+        const map = new Map<string, any>();
+        let curr = new Date(start);
+        while(curr <= end) {
+            map.set(curr.toLocaleDateString(), {
+                date: curr.toLocaleDateString(),
+                shortDate: new Date(curr).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+                protein: 0,
+                carbs: 0,
+                fat: 0
+            });
+            curr.setDate(curr.getDate() + 1);
+        }
+        
+        statsHistory.forEach(s => {
+            const d = new Date(s.date);
+            if (d >= start && d <= end) {
+                const dateStr = d.toLocaleDateString();
+                if (map.has(dateStr)) {
+                    const entry = map.get(dateStr);
+                    entry.protein = s.protein || 0;
+                    entry.carbs = s.carbs || 0;
+                    entry.fat = s.fat || 0;
+                }
+            }
+        });
+        return Array.from(map.values());
+  }, [statsHistory, start, end]);
+
   const exerciseChartData = useMemo(() => getAggregatedData<ExerciseEntry>(exercises, 'caloriesBurned', start, end, viewMode), [exercises, start, end, viewMode]);
   
   // Weight Line Chart Data (Non-aggregated, just chronological points)
@@ -261,6 +291,7 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
         <div className="flex space-x-3 overflow-x-auto pb-4 no-scrollbar -mx-6 px-6">
             <TabButton id="overview" label="Overview" icon={Calendar} />
             <TabButton id="food" label="Food" icon={Utensils} />
+            <TabButton id="macros" label="Macros" icon={PieChart} />
             <TabButton id="exercise" label="Exercise" icon={Dumbbell} />
             <TabButton id="weight" label="Weight" icon={Scale} />
             <TabButton id="body" label="Body" icon={Ruler} />
@@ -369,6 +400,64 @@ export const StatsModule: React.FC<StatsModuleProps> = ({
                         ))
                     )}
                 </div>
+            </div>
+        )}
+
+        {/* MACROS TAB */}
+        {activeTab === 'macros' && (
+            <div className="space-y-6">
+                <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-purple-50 p-3 rounded-2xl border border-purple-100 text-center">
+                        <span className="text-[10px] font-bold text-purple-700 uppercase">Protein</span>
+                        <p className="text-xl font-bold text-gray-900">
+                            {Math.round(macroChartData.reduce((acc, c) => acc + c.protein, 0))} <span className="text-xs text-gray-500 font-normal">g</span>
+                        </p>
+                    </div>
+                    <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100 text-center">
+                        <span className="text-[10px] font-bold text-blue-700 uppercase">Carbs</span>
+                        <p className="text-xl font-bold text-gray-900">
+                            {Math.round(macroChartData.reduce((acc, c) => acc + c.carbs, 0))} <span className="text-xs text-gray-500 font-normal">g</span>
+                        </p>
+                    </div>
+                    <div className="bg-orange-50 p-3 rounded-2xl border border-orange-100 text-center">
+                        <span className="text-[10px] font-bold text-orange-700 uppercase">Fat</span>
+                        <p className="text-xl font-bold text-gray-900">
+                            {Math.round(macroChartData.reduce((acc, c) => acc + c.fat, 0))} <span className="text-xs text-gray-500 font-normal">g</span>
+                        </p>
+                    </div>
+                </div>
+
+                {viewMode !== 'day' && (
+                    <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+                        <h3 className="font-bold text-gray-900 mb-4">Nutrient Breakdown</h3>
+                        <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={macroChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                    <XAxis 
+                                        dataKey="shortDate" 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                        tick={{fontSize: 10, fill: '#9ca3af'}} 
+                                        minTickGap={20}
+                                    />
+                                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#9ca3af'}} />
+                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                                    <Legend wrapperStyle={{paddingTop: '10px'}}/>
+                                    <Bar dataKey="protein" name="Protein" stackId="a" fill="#a855f7" radius={[0, 0, 0, 0]} />
+                                    <Bar dataKey="carbs" name="Carbs" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                                    <Bar dataKey="fat" name="Fat" stackId="a" fill="#f97316" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+                
+                {viewMode === 'day' && (
+                    <div className="text-center text-gray-400 py-10">
+                        <p>Detailed macro chart available in Week/Month view.</p>
+                    </div>
+                )}
             </div>
         )}
 

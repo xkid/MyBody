@@ -25,11 +25,18 @@ export interface MeasurementEntry {
   syncedWeight?: number; // Weight at time of measurement
 }
 
+export interface Macros {
+  protein: number; // grams
+  carbs: number;   // grams
+  fat: number;     // grams
+}
+
 export interface FoodEntry {
   id: string;
   date: string; // ISO string
   name: string;
   calories: number;
+  macros?: Macros; // Optional macronutrients
   imageUrl?: string;
   type?: string; // Optional user description
 }
@@ -69,4 +76,7 @@ export interface DailyStats {
   bmr: number;
   net: number;
   exerciseMinutes: number;
+  protein: number;
+  carbs: number;
+  fat: number;
 }

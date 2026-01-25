@@ -22,7 +22,7 @@ const INITIAL_PROFILE: UserProfile = {
 };
 
 // Application Version - Bump this to trigger the update modal
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.5.0';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
@@ -284,6 +284,13 @@ const App: React.FC = () => {
   const dashboardIntake = dashboardFoods.reduce((acc, curr) => acc + curr.calories, 0);
   const dashboardBurned = dashboardExercises.reduce((acc, curr) => acc + curr.caloriesBurned, 0);
   const dashboardExerciseMins = dashboardExercises.reduce((acc, curr) => acc + curr.durationMinutes, 0);
+  
+  // Aggregated Macros for Dashboard
+  const dashboardMacros = dashboardFoods.reduce((acc, curr) => ({
+      protein: acc.protein + (curr.macros?.protein || 0),
+      carbs: acc.carbs + (curr.macros?.carbs || 0),
+      fat: acc.fat + (curr.macros?.fat || 0),
+  }), { protein: 0, carbs: 0, fat: 0 });
 
   const dashboardStats: DailyStats = {
       date: dashboardDate.toISOString(),
@@ -291,7 +298,8 @@ const App: React.FC = () => {
       burned: dashboardBurned,
       bmr: dashboardBMR,
       net: dashboardIntake - (dashboardBMR + dashboardBurned),
-      exerciseMinutes: dashboardExerciseMins
+      exerciseMinutes: dashboardExerciseMins,
+      ...dashboardMacros
   };
 
   const statsHistory: DailyStats[] = useMemo(() => {
@@ -300,15 +308,41 @@ const App: React.FC = () => {
     // Initialize map with foods
     foods.forEach(f => {
       const d = new Date(f.date).toLocaleDateString();
-      if (!map.has(d)) map.set(d, { date: f.date, intake: 0, burned: 0, bmr: todayBMR, net: 0, exerciseMinutes: 0 }); // Note: BMR simplified here for history chart
+      if (!map.has(d)) map.set(d, { 
+          date: f.date, 
+          intake: 0, 
+          burned: 0, 
+          bmr: todayBMR, 
+          net: 0, 
+          exerciseMinutes: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0 
+      }); 
+      
       const entry = map.get(d)!;
       entry.intake += f.calories;
+      if (f.macros) {
+          entry.protein += f.macros.protein;
+          entry.carbs += f.macros.carbs;
+          entry.fat += f.macros.fat;
+      }
     });
 
     // Add exercises
     exercises.forEach(e => {
       const d = new Date(e.date).toLocaleDateString();
-      if (!map.has(d)) map.set(d, { date: e.date, intake: 0, burned: 0, bmr: todayBMR, net: 0, exerciseMinutes: 0 });
+      if (!map.has(d)) map.set(d, { 
+          date: e.date, 
+          intake: 0, 
+          burned: 0, 
+          bmr: todayBMR, 
+          net: 0, 
+          exerciseMinutes: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0
+      });
       const entry = map.get(d)!;
       entry.burned += e.caloriesBurned;
       entry.exerciseMinutes += e.durationMinutes;
@@ -450,11 +484,11 @@ const App: React.FC = () => {
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 mb-2">We've updated!</h3>
                     <div className="space-y-3 text-gray-600 text-sm">
-                        <p>Welcome to version {APP_VERSION}. Here is what's new:</p>
+                        <p>Welcome to version {APP_VERSION}. What's new:</p>
                         <ul className="list-disc pl-5 space-y-1">
-                            <li><span className="font-semibold">Enhanced Backup:</span> Smarter data import/export with file versioning and safety checks.</li>
-                            <li><span className="font-semibold">Exercise Reminders:</span> Fixed notification permissions and improved scheduling reliability.</li>
-                            <li><span className="font-semibold">Stability:</span> Smoother transitions and bug fixes for a better mobile experience.</li>
+                            <li><span className="font-semibold">Macronutrients:</span> Track Protein, Carbs, and Fat in your food logs.</li>
+                            <li><span className="font-semibold">AI Breakdown:</span> Food scans now automatically estimate macros.</li>
+                            <li><span className="font-semibold">Macro Stats:</span> View your nutrient breakdown in the Stats tab.</li>
                         </ul>
                     </div>
                     <button 
