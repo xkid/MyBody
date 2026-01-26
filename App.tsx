@@ -20,8 +20,8 @@ const INITIAL_PROFILE: UserProfile = {
   reminders: []
 };
 
-// Application Version - Bumped to 1.6.1
-const APP_VERSION = '1.6.1';
+// Application Version - Bumped to 1.6.3
+const APP_VERSION = '1.6.3';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
@@ -483,14 +483,10 @@ const App: React.FC = () => {
                             <X size={24} />
                         </button>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Update Installed!</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Build Fixed!</h3>
                     <div className="space-y-3 text-gray-600 text-sm">
-                        <p>Latest version {APP_VERSION} is ready.</p>
-                        <p className="text-xs bg-gray-100 p-2 rounded">Fixes build error on Vercel deployment.</p>
-                        <ul className="list-disc pl-5 space-y-1">
-                            <li><span className="font-semibold">Hotfix:</span> Removed corrupted asset preventing build.</li>
-                            <li><span className="font-semibold">Performance:</span> Optimized initial load.</li>
-                        </ul>
+                        <p>Version {APP_VERSION} is ready.</p>
+                        <p className="text-xs bg-gray-100 p-2 rounded">Resolved dependency issues.</p>
                     </div>
                     <button 
                         onClick={handleCloseUpdateModal}
