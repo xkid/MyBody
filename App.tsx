@@ -20,8 +20,8 @@ const INITIAL_PROFILE: UserProfile = {
   reminders: []
 };
 
-// Application Version - Bumped to 1.6.5
-const APP_VERSION = '1.6.5';
+// Application Version - Bumped to 1.6.6
+const APP_VERSION = '1.6.6';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');

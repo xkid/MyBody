@@ -25,6 +25,20 @@ export const analyzeFood = async (
     Identify the food item and estimate the total calories AND macronutrients (protein, carbs, fat in grams).
     If the food is packaged or looks like a specific brand/restaurant item, use the search tool to find accurate nutritional information.
     ${userDescription ? `\nThe user provided this description: "${userDescription}". Use this to refine your search and estimation.` : ''}
+
+    Return the result strictly as a valid JSON object with the following structure:
+    {
+      "foodName": "string",
+      "calories": number,
+      "macros": {
+        "protein": number,
+        "carbs": number,
+        "fat": number
+      },
+      "confidence": "high" | "medium" | "low",
+      "servingSize": "string"
+    }
+    Do not wrap the JSON in markdown code blocks. Just return the raw JSON string.
   `;
   
   if (!imageBase64 && !userDescription) {
@@ -48,32 +62,30 @@ export const analyzeFood = async (
         contents: { parts },
         config: {
             tools: [{ googleSearch: {} }],
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    foodName: { type: Type.STRING },
-                    calories: { type: Type.NUMBER },
-                    macros: {
-                        type: Type.OBJECT,
-                        properties: {
-                            protein: { type: Type.NUMBER },
-                            carbs: { type: Type.NUMBER },
-                            fat: { type: Type.NUMBER }
-                        },
-                        required: ["protein", "carbs", "fat"]
-                    },
-                    confidence: { type: Type.STRING, enum: ["high", "medium", "low"] },
-                    servingSize: { type: Type.STRING }
-                },
-                required: ["foodName", "calories", "macros", "confidence"]
-            }
+            // responseMimeType and responseSchema are incompatible with tools in this model version
         }
     });
 
-    const jsonText = response.text || "{}";
+    let jsonText = response.text || "{}";
+    
+    // Clean up potential markdown formatting (```json ... ```)
+    jsonText = jsonText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "");
+
     try {
       const parsedData = JSON.parse(jsonText) as AnalyzedFood;
+      
+      // Basic validation
+      if (!parsedData.foodName) {
+          // If parsing succeeded but data is empty/wrong structure
+           return {
+            foodName: parsedData.foodName || userDescription || "Unknown Food",
+            calories: typeof parsedData.calories === 'number' ? parsedData.calories : 0,
+            macros: parsedData.macros || { protein: 0, carbs: 0, fat: 0 },
+            confidence: "low",
+            servingSize: "Unknown"
+          };
+      }
+
       return parsedData;
     } catch (parseError) {
       console.error("Failed to parse Gemini response:", jsonText);
@@ -110,6 +122,7 @@ export const estimateExercise = async (
             model: model,
             contents: promptText,
             config: {
+                // Tools not used here, so Schema is safe
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
